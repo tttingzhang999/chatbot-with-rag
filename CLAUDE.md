@@ -66,7 +66,29 @@ aws-vault add <profile-name>
 aws-vault exec <profile-name> -- aws s3 ls
 ```
 
-### Local Testing
+### Local Development (Without AWS)
+
+For local development without AWS services:
+
+```bash
+# Initialize database
+./scripts/init_db.sh
+
+# Start FastAPI backend (Terminal 1)
+./scripts/start_backend.sh
+# or: python -m uvicorn src.main:app --reload --port 8000
+
+# Start Gradio frontend (Terminal 2)
+./scripts/start_frontend.sh
+# or: python src/app.py
+
+# Test API
+python scripts/test_api.py
+```
+
+See [`docs/local_development.md`](./docs/local_development.md) for detailed local development guide.
+
+### Production Testing (With AWS)
 
 ```bash
 # Test document processor
@@ -74,9 +96,6 @@ python -m src.document_processor
 
 # Test retrieval system
 python -m src.retrieval
-
-# Run Gradio frontend locally
-python -m src.app
 ```
 
 ### Code Quality

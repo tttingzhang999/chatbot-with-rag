@@ -251,8 +251,18 @@ EMBEDDING_MODEL_ID=cohere.embed-v4
 
 ## 專案進度
 
+### Phase 0: 基礎架構 ✅ (已完成)
+- [x] 設定本地開發環境（uv, pre-commit, ruff）
+- [x] 設計資料庫 schema (PostgreSQL + pgvector)
+- [x] 建立 SQLAlchemy models
+- [x] 配置 Alembic 資料庫遷移
+- [x] 建立 FastAPI 後端架構
+- [x] 開發 Gradio 前端界面
+- [x] 實作基本登入功能
+- [x] 實作多輪對話與歷史記錄
+- [x] 建立本地開發環境文件
+
 ### Phase 1: 環境準備與 AWS 熟悉
-- [ ] 設定本地開發環境（uv, pre-commit, ruff）
 - [ ] 設定 AWS Vault
 - [ ] 建立 AWS 帳號權限與 IAM 設定
 - [ ] 熟悉各 AWS 服務的基本操作
@@ -272,14 +282,14 @@ EMBEDDING_MODEL_ID=cohere.embed-v4
 - [ ] 使用 Test Set 驗證成效
 
 ### Phase 4: 對話系統
-- [ ] 整合 Claude Sonnet 4
+- [ ] 整合 Claude Sonnet 4（目前使用 echo 回應）
 - [ ] 實作 Prompt Engineering
-- [ ] 實作多輪對話與 Context 管理
+- [ ] 實作 Context 管理優化
 - [ ] 測試對話品質
 
 ### Phase 5: 前端與部署
-- [ ] 開發 Gradio 前端界面
-- [ ] 實作登入功能
+- [x] 開發 Gradio 前端界面（本地版）
+- [x] 實作登入功能（簡易版）
 - [ ] Docker 容器化
 - [ ] 部署至 AWS（Lambda + API Gateway）
 - [ ] 設定 SSL 與自訂網域
@@ -338,7 +348,31 @@ chore: 雜項（依賴更新等）
 
 ## 部署指南
 
-### 本地測試
+### 本地開發 (推薦開始方式)
+
+快速啟動本地開發環境（不需 AWS 服務）：
+
+```bash
+# 1. 初始化資料庫
+./scripts/init_db.sh
+
+# 2. 啟動後端 (Terminal 1)
+./scripts/start_backend.sh
+
+# 3. 啟動前端 (Terminal 2)
+./scripts/start_frontend.sh
+
+# 4. 測試 API
+python scripts/test_api.py
+```
+
+存取應用程式：
+- 前端界面: http://localhost:7860
+- API 文件: http://localhost:8000/docs
+
+詳細說明請參考 [本地開發指南](docs/local_development.md)
+
+### 生產環境測試（含 AWS 服務）
 
 ```bash
 # 執行文件處理測試
@@ -346,9 +380,6 @@ python -m src.document_processor
 
 # 執行檢索測試
 python -m src.retrieval
-
-# 啟動 Gradio 界面
-python -m src.app
 ```
 
 ### Docker 建置
