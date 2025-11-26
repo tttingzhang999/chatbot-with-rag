@@ -2,6 +2,7 @@
 Gradio frontend application for HR Chatbot with registration and login.
 """
 
+from contextlib import ExitStack
 from pathlib import Path
 
 import gradio as gr
@@ -51,16 +52,48 @@ def register(
     """
     # Validation
     if not username or not username.strip():
-        return "❌ 請輸入使用者名稱", gr.update(visible=True), gr.update(), gr.update(), gr.update(), gr.update(), gr.update()
+        return (
+            "❌ 請輸入使用者名稱",
+            gr.update(visible=True),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+        )
 
     if not email or not email.strip():
-        return "❌ 請輸入電子郵件", gr.update(visible=True), gr.update(), gr.update(), gr.update(), gr.update(), gr.update()
+        return (
+            "❌ 請輸入電子郵件",
+            gr.update(visible=True),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+        )
 
     if not password or len(password) < 6:
-        return "❌ 密碼至少需要 6 個字元", gr.update(visible=True), gr.update(), gr.update(), gr.update(), gr.update(), gr.update()
+        return (
+            "❌ 密碼至少需要 6 個字元",
+            gr.update(visible=True),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+        )
 
     if password != confirm_password:
-        return "❌ 密碼不一致", gr.update(visible=True), gr.update(), gr.update(), gr.update(), gr.update(), gr.update()
+        return (
+            "❌ 密碼不一致",
+            gr.update(visible=True),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+        )
 
     try:
         # Prepare request data
@@ -99,13 +132,31 @@ def register(
             )
         else:
             error_detail = response.json().get("detail", "註冊失敗")
-            return f"❌ {error_detail}", gr.update(visible=True), gr.update(), gr.update(), gr.update(), gr.update(), gr.update()
+            return (
+                f"❌ {error_detail}",
+                gr.update(visible=True),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+            )
 
     except requests.exceptions.RequestException as e:
-        return f"❌ 無法連接到伺服器: {e}", gr.update(visible=True), gr.update(), gr.update(), gr.update(), gr.update(), gr.update()
+        return (
+            f"❌ 無法連接到伺服器: {e}",
+            gr.update(visible=True),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+        )
 
 
-def login(username: str, password: str) -> tuple[str, gr.update, gr.update, gr.update, gr.update, gr.update, gr.update]:
+def login(
+    username: str, password: str
+) -> tuple[str, gr.update, gr.update, gr.update, gr.update, gr.update, gr.update]:
     """
     Handle user login.
 
@@ -119,10 +170,26 @@ def login(username: str, password: str) -> tuple[str, gr.update, gr.update, gr.u
     """
     # Validation
     if not username or not username.strip():
-        return "❌ 請輸入使用者名稱", gr.update(visible=True), gr.update(), gr.update(), gr.update(), gr.update(), gr.update()
+        return (
+            "❌ 請輸入使用者名稱",
+            gr.update(visible=True),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+        )
 
     if not password:
-        return "❌ 請輸入密碼", gr.update(visible=True), gr.update(), gr.update(), gr.update(), gr.update(), gr.update()
+        return (
+            "❌ 請輸入密碼",
+            gr.update(visible=True),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+        )
 
     try:
         response = requests.post(
@@ -150,10 +217,26 @@ def login(username: str, password: str) -> tuple[str, gr.update, gr.update, gr.u
             )
         else:
             error_detail = response.json().get("detail", "登入失敗")
-            return f"❌ {error_detail}", gr.update(visible=True), gr.update(), gr.update(), gr.update(), gr.update(), gr.update()
+            return (
+                f"❌ {error_detail}",
+                gr.update(visible=True),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+            )
 
     except requests.exceptions.RequestException as e:
-        return f"❌ 無法連接到伺服器: {e}", gr.update(visible=True), gr.update(), gr.update(), gr.update(), gr.update(), gr.update()
+        return (
+            f"❌ 無法連接到伺服器: {e}",
+            gr.update(visible=True),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+        )
 
 
 def send_message(
@@ -312,28 +395,38 @@ def load_conversation_messages(conversation_id: str) -> list:
         return []
 
 
-def upload_file(file) -> tuple[str, gr.update, list]:
+def upload_file(files) -> tuple[str, gr.update, list]:
     """
-    Upload file to server.
+    Upload one or multiple files to server.
 
     Args:
-        file: Uploaded file
+        files: Uploaded file or list of files
 
     Returns:
         tuple: (status message, status visibility update, updated document list)
     """
-    if not file:
+    if not files:
         return "❌ 請選擇檔案", gr.update(visible=True), load_documents()
 
     if not current_user["access_token"]:
         return "❌ 請先登入", gr.update(visible=True), []
 
+    # Handle both single file and multiple files
+    # Gradio returns a list when file_count="multiple"
+    if not isinstance(files, list):
+        files = [files]
+
     try:
-        with open(file.name, "rb") as f:
-            files = {"file": (file.name, f, "application/octet-stream")}
+        # Prepare files for multipart upload using ExitStack for multiple context managers
+        with ExitStack() as stack:
+            files_to_upload = []
+            for file in files:
+                fh = stack.enter_context(open(file.name, "rb"))
+                files_to_upload.append(("files", (file.name, fh, "application/octet-stream")))
+
             response = requests.post(
                 f"{API_BASE_URL}/upload/document",
-                files=files,
+                files=files_to_upload,
                 headers=get_auth_headers(),
                 timeout=settings.HTTP_TIMEOUT_UPLOAD,
             )
@@ -342,7 +435,16 @@ def upload_file(file) -> tuple[str, gr.update, list]:
             data = response.json()
             # Reload documents list
             documents = load_documents()
-            return f"✅ {data['message']}", gr.update(visible=True), documents
+
+            # Generate detailed message
+            message = f"✅ {data['message']}\n\n"
+            if data.get("failed", 0) > 0:
+                message += "失敗的文件:\n"
+                for result in data.get("results", []):
+                    if result["status"] == "failed":
+                        message += f"  • {result['filename']}: {result['error_message']}\n"
+
+            return message.strip(), gr.update(visible=True), documents
         else:
             return f"❌ 上傳失敗: {response.text}", gr.update(visible=True), load_documents()
 
@@ -534,46 +636,45 @@ with gr.Blocks(title="HR Chatbot", theme=gr.themes.Soft()) as demo:
                 gr.Markdown("_還沒有帳號？請切換到「註冊」分頁_")
 
         # Chat tab (index 2)
-        with gr.Tab("對話", id=2):
-            with gr.Row():
-                # Left sidebar - User info and conversation history
-                with gr.Column(scale=1):
-                    gr.Markdown("### 👤 使用者資訊")
-                    user_info = gr.Markdown("未登入")
-                    logout_btn = gr.Button("登出", variant="secondary")
+        with gr.Tab("對話", id=2), gr.Row():
+            # Left sidebar - User info and conversation history
+            with gr.Column(scale=1):
+                gr.Markdown("### 👤 使用者資訊")
+                user_info = gr.Markdown("未登入")
+                logout_btn = gr.Button("登出", variant="secondary")
 
-                    gr.Markdown("---")
-                    gr.Markdown("### 💬 對話歷史")
-                    new_chat_btn = gr.Button("新對話", variant="primary", interactive=False)
-                    refresh_btn = gr.Button("載入", interactive=False)
+                gr.Markdown("---")
+                gr.Markdown("### 💬 對話歷史")
+                new_chat_btn = gr.Button("新對話", variant="primary", interactive=False)
+                refresh_btn = gr.Button("載入", interactive=False)
 
-                    conversation_list = gr.Dataframe(
-                        headers=["ID", "標題", "更新時間", "訊息數"],
-                        datatype=["str", "str", "str", "number"],
-                        col_count=(4, "fixed"),
-                        interactive=False,
-                        wrap=True,
+                conversation_list = gr.Dataframe(
+                    headers=["ID", "標題", "更新時間", "訊息數"],
+                    datatype=["str", "str", "str", "number"],
+                    col_count=(4, "fixed"),
+                    interactive=False,
+                    wrap=True,
+                )
+
+            # Main chat area
+            with gr.Column(scale=3):
+                gr.Markdown("### 💭 對話")
+                chatbot = gr.Chatbot(
+                    label="聊天訊息",
+                    height=500,
+                    type="tuples",
+                    show_copy_button=True,
+                    avatar_images=(None, BOT_AVATAR_IMAGE),
+                )
+
+                with gr.Row():
+                    msg_input = gr.Textbox(
+                        label="輸入訊息",
+                        placeholder="在此輸入您的問題...",
+                        scale=4,
+                        lines=2,
                     )
-
-                # Main chat area
-                with gr.Column(scale=3):
-                    gr.Markdown("### 💭 對話")
-                    chatbot = gr.Chatbot(
-                        label="聊天訊息",
-                        height=500,
-                        type="tuples",
-                        show_copy_button=True,
-                        avatar_images=(None, BOT_AVATAR_IMAGE),
-                    )
-
-                    with gr.Row():
-                        msg_input = gr.Textbox(
-                            label="輸入訊息",
-                            placeholder="在此輸入您的問題...",
-                            scale=4,
-                            lines=2,
-                        )
-                        send_btn = gr.Button("發送 ✉️", variant="primary", scale=1, interactive=False)
+                    send_btn = gr.Button("發送 ✉️", variant="primary", scale=1, interactive=False)
 
         # Document Management tab (index 3)
         with gr.Tab("文件管理", id=3):
@@ -585,8 +686,9 @@ with gr.Blocks(title="HR Chatbot", theme=gr.themes.Soft()) as demo:
                 with gr.Column(scale=1):
                     gr.Markdown("### 📤 上傳文件")
                     file_upload = gr.File(
-                        label="選擇檔案",
+                        label="選擇檔案 (可多選)",
                         file_types=[f".{ext}" for ext in settings.SUPPORTED_FILE_TYPES],
+                        file_count="multiple",
                     )
                     upload_btn = gr.Button("上傳", variant="primary", interactive=False)
 
@@ -597,6 +699,11 @@ with gr.Blocks(title="HR Chatbot", theme=gr.themes.Soft()) as demo:
                     - PDF (.pdf)
                     - 文字檔 (.txt)
                     - Word 文件 (.docx)
+
+                    **多文件上傳:**
+                    - 可一次選擇多個文件上傳
+                    - 文件會按順序依次處理
+                    - 某個文件失敗不影響其他文件
 
                     **處理流程:**
                     1. 上傳文件
@@ -646,20 +753,44 @@ with gr.Blocks(title="HR Chatbot", theme=gr.themes.Soft()) as demo:
             reg_confirm_password_input,
             reg_full_name_input,
         ],
-        outputs=[unified_status, unified_status, tabs, send_btn, upload_btn, new_chat_btn, refresh_btn],
+        outputs=[
+            unified_status,
+            unified_status,
+            tabs,
+            send_btn,
+            upload_btn,
+            new_chat_btn,
+            refresh_btn,
+        ],
     )
 
     # Event handlers - Login
     login_btn.click(
         fn=login,
         inputs=[login_username_input, login_password_input],
-        outputs=[unified_status, unified_status, tabs, send_btn, upload_btn, new_chat_btn, refresh_btn],
+        outputs=[
+            unified_status,
+            unified_status,
+            tabs,
+            send_btn,
+            upload_btn,
+            new_chat_btn,
+            refresh_btn,
+        ],
     )
 
     # Event handlers - Logout
     logout_btn.click(
         fn=logout,
-        outputs=[unified_status, unified_status, tabs, send_btn, upload_btn, new_chat_btn, refresh_btn],
+        outputs=[
+            unified_status,
+            unified_status,
+            tabs,
+            send_btn,
+            upload_btn,
+            new_chat_btn,
+            refresh_btn,
+        ],
     )
 
     # Event handlers - Chat

@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2025-11-29 - Multi-file Upload Support
+
+#### Added
+
+- Multi-file upload support in the backend and Gradio frontend:
+  - Backend `/upload/document` endpoint now accepts multiple files simultaneously, validating and processing each file independently.
+  - Introduced new `DocumentUploadResult` schema to represent status and details for each uploaded file.
+  - Upload response schema updated to include overall summary and per-file results (success/failed counts, error messages).
+  - Frontend upload component updated to allow selecting multiple files (`file_count="multiple"`) with an improved label.
+  - Enhanced frontend upload logic to:
+    - Accept a list of files and manage them safely with `ExitStack`.
+    - Display a summary of successes/failures and list failed files with error messages after upload.
+    - Update the document list table in real time to reflect the state of each file (pending, succeeded, failed).
+
+#### Changed
+
+- Simplified multi-file task management with FastAPI's native `BackgroundTasks`, leveraging FIFO task execution without introducing a queue system.
+- Improved feedback to users:
+  - Upload dialog now clearly distinguishes how many files were successfully processed and lists those that failed.
+  - All error messages are now clearer and presented in Chinese for end-user guidance.
+  - Real-time feedback in the UI table for ongoing status of uploaded files.
+- Updated technical documentation with new instructions for batch/multi-file upload, including both user and developer perspectives.
+
+#### Fixed
+
+- Ensured that an error processing one file does not interrupt or affect the upload of other files; tasks complete independently.
+- File resource management on frontend now uses `ExitStack` to correctly handle context managers for multiple files, preventing resource leaks.
+- All code changes have passed `ruff check` and have been formatted with `ruff format`.
+
+#### Notes
+
+- This update prioritizes a streamlined user experience for batch uploading, robust per-file error handling, and improved observability in both backend and frontend flows.
+
+
+
 ## [0.4.1] - 2025-11-28 - PDF parsing improvements
 
 #### Changed

@@ -3,10 +3,8 @@ File upload routes with document processing.
 """
 
 import logging
-import os
 import uuid
 from pathlib import Path
-from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
@@ -25,13 +23,23 @@ UPLOAD_DIR = Path(settings.UPLOAD_DIR)
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 
-class UploadResponse(BaseModel):
-    """Upload response model."""
+class DocumentUploadResult(BaseModel):
+    """Single document upload result."""
 
     document_id: str
     filename: str
     size: int
-    content_type: str
+    status: str  # "success" or "failed"
+    error_message: str | None = None
+
+
+class UploadResponse(BaseModel):
+    """Upload response model for multiple files."""
+
+    results: list[DocumentUploadResult]
+    total: int
+    successful: int
+    failed: int
     message: str
 
 
@@ -104,100 +112,148 @@ def process_document_background(
 @router.post("/document", response_model=UploadResponse)
 async def upload_document(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
+    files: list[UploadFile] = File(...),
     current_user: CurrentUser = None,
     db: DBSession = None,
 ) -> UploadResponse:
     """
-    Upload a document and trigger processing.
+    Upload one or multiple documents and trigger processing.
 
     This endpoint:
-    1. Saves file to local storage (or S3 in production)
-    2. Creates Document record in database
-    3. Triggers async processing (simulates Lambda)
+    1. Saves files to local storage (or S3 in production)
+    2. Creates Document records in database
+    3. Triggers async processing for each file (simulates Lambda)
+    4. Processes files sequentially in the order they were uploaded
 
     Args:
         background_tasks: FastAPI background tasks
-        file: Uploaded file
+        files: List of uploaded files
         current_user: Current authenticated user
         db: Database session
 
     Returns:
-        UploadResponse: Upload confirmation with document ID
+        UploadResponse: Upload confirmation with results for each file
     """
-    if not file.filename:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No filename provided",
-        )
+    results: list[DocumentUploadResult] = []
+    successful_count = 0
+    failed_count = 0
 
-    # Extract just the filename (without path) from potentially full path
-    original_filename = Path(file.filename).name
+    for file in files:
+        try:
+            # Validate filename
+            if not file.filename:
+                results.append(
+                    DocumentUploadResult(
+                        document_id="",
+                        filename="unknown",
+                        size=0,
+                        status="failed",
+                        error_message="No filename provided",
+                    )
+                )
+                failed_count += 1
+                continue
 
-    # Get file extension
-    file_ext = Path(original_filename).suffix.lower().lstrip(".")
-    if file_ext not in settings.SUPPORTED_FILE_TYPES:
-        supported_types = ", ".join(settings.SUPPORTED_FILE_TYPES)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported file type: {file_ext}. Supported: {supported_types}",
-        )
+            # Extract just the filename (without path) from potentially full path
+            original_filename = Path(file.filename).name
 
-    try:
-        # Read file content
-        content = await file.read()
-        file_size = len(content)
+            # Get file extension
+            file_ext = Path(original_filename).suffix.lower().lstrip(".")
+            if file_ext not in settings.SUPPORTED_FILE_TYPES:
+                supported_types = ", ".join(settings.SUPPORTED_FILE_TYPES)
+                results.append(
+                    DocumentUploadResult(
+                        document_id="",
+                        filename=original_filename,
+                        size=0,
+                        status="failed",
+                        error_message=f"Unsupported file type: {file_ext}. Supported: {supported_types}",
+                    )
+                )
+                failed_count += 1
+                continue
 
-        # Generate unique filename
-        document_id = uuid.uuid4()
-        unique_filename = f"{document_id}_{original_filename}"
-        file_path = UPLOAD_DIR / unique_filename
+            # Read file content
+            content = await file.read()
+            file_size = len(content)
 
-        # Save file to local storage
-        with open(file_path, "wb") as f:
-            f.write(content)
+            # Generate unique filename
+            document_id = uuid.uuid4()
+            unique_filename = f"{document_id}_{original_filename}"
+            file_path = UPLOAD_DIR / unique_filename
 
-        logger.info(f"File saved: {file_path}")
+            # Save file to local storage
+            with open(file_path, "wb") as f:
+                f.write(content)
 
-        # Create Document record in database
-        document = Document(
-            id=document_id,
-            user_id=current_user.id,
-            file_name=original_filename,
-            file_path=str(file_path),
-            file_type=file_ext,
-            file_size=file_size,
-            status="pending",
-        )
-        db.add(document)
-        db.commit()
-        db.refresh(document)
+            logger.info(f"File saved: {file_path}")
 
-        logger.info(f"Document record created: {document_id}")
+            # Create Document record in database
+            document = Document(
+                id=document_id,
+                user_id=current_user.id,
+                file_name=original_filename,
+                file_path=str(file_path),
+                file_type=file_ext,
+                file_size=file_size,
+                status="pending",
+            )
+            db.add(document)
+            db.commit()
+            db.refresh(document)
 
-        # Trigger background processing (simulates Lambda)
-        background_tasks.add_task(
-            process_document_background,
-            document_id=document_id,
-            file_path=str(file_path),
-            file_type=file_ext,
-            db_url=settings.DATABASE_URL,
-        )
+            logger.info(f"Document record created: {document_id}")
 
-        return UploadResponse(
-            document_id=str(document_id),
-            filename=original_filename,
-            size=file_size,
-            content_type=file.content_type or "application/octet-stream",
-            message="File uploaded successfully. Processing started in background.",
-        )
+            # Trigger background processing (simulates Lambda)
+            # BackgroundTasks will process these sequentially in order
+            background_tasks.add_task(
+                process_document_background,
+                document_id=document_id,
+                file_path=str(file_path),
+                file_type=file_ext,
+                db_url=settings.DATABASE_URL,
+            )
 
-    except Exception as e:
-        logger.error(f"Upload failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Upload failed: {str(e)}",
-        )
+            results.append(
+                DocumentUploadResult(
+                    document_id=str(document_id),
+                    filename=original_filename,
+                    size=file_size,
+                    status="success",
+                    error_message=None,
+                )
+            )
+            successful_count += 1
+
+        except Exception as e:
+            logger.error(f"Upload failed for file {file.filename}: {e}")
+            results.append(
+                DocumentUploadResult(
+                    document_id="",
+                    filename=file.filename or "unknown",
+                    size=0,
+                    status="failed",
+                    error_message=str(e),
+                )
+            )
+            failed_count += 1
+
+    # Generate summary message
+    total = len(files)
+    if failed_count == 0:
+        message = f"成功上傳 {successful_count} 個文件，處理已在背景執行"
+    elif successful_count == 0:
+        message = f"所有 {total} 個文件上傳失敗"
+    else:
+        message = f"成功上傳 {successful_count}/{total} 個文件，{failed_count} 個失敗"
+
+    return UploadResponse(
+        results=results,
+        total=total,
+        successful=successful_count,
+        failed=failed_count,
+        message=message,
+    )
 
 
 @router.get("/documents", response_model=DocumentListResponse)
