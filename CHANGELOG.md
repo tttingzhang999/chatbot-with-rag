@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2025-11-28 - PDF parsing improvements
+
+#### Changed
+
+- Improved PDF extraction: PDF parsing logic now skips pages with broken/garbled encoding by calculating the Chinese character ratio per page. Only pages with >30% Chinese characters are included as valid parsed content. This improves text extraction robustness, especially for primarily Chinese documents with occasional non-unicode English/garbled pages.
+- PDF extraction logging is more granular: now logs number of pages processed, pages skipped, and reports character counts after extraction.
+- Document chunking logic made context-aware and semantic:
+  - Structured documents (e.g., laws, regulations) with article/section markers are now chunked by detected articles/sections, using patterns for "第X條" and English "Article X"/"Section X" (requires at least 3 markers to be considered structured).
+  - Unstructured documents are chunked by paragraph, maintaining paragraph boundaries.
+  - Large semantic units are further split by sentence boundaries with overlap for context preservation.
+  - Chunk size and overlap defaults changed to 512 characters (from 1000) and 128 characters (from 200), respectively.
+  - Minimum chunk size enforced at 300 chars; chunks are constructed to preserve as much semantic information as possible, adding context overlap between them.
+  - Added debug-level logging to chunking process for improved observability.
+
+#### Fixed
+
+- Fixed an extraction bug where empty or whitespace-only extracted text could cause errors downstream by validating content and erroring more gracefully.
+- PDF and DOCX text extraction now removes excess whitespace, ensures proper newline handling, and is more robust to file encoding issues.
+
+
+
 ## [0.4.0] - 2025-11-28 - File Uploads, Parsing, and Document Support
 
 #### Added

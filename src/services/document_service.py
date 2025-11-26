@@ -133,22 +133,49 @@ class DocumentProcessor:
 
             elif file_type == "pdf":
                 # Extract text from PDF using pypdf
+                # Filter out pages with garbled encoding (e.g., English pages with broken fonts)
                 from pypdf import PdfReader
 
                 reader = PdfReader(file_path)
                 text_parts = []
+                pages_processed = 0
+                pages_skipped = 0
 
                 for page_num, page in enumerate(reader.pages):
                     try:
                         page_text = page.extract_text()
-                        if page_text.strip():
-                            text_parts.append(page_text)
+                        if not page_text.strip():
+                            continue
+
+                        # Detect if page has readable Chinese content
+                        # Skip pages with garbled encoding (low Chinese character ratio)
+                        chinese_chars = sum(1 for c in page_text if "\u4e00" <= c <= "\u9fff")
+                        total_chars = len(page_text.strip())
+
+                        if total_chars > 0:
+                            chinese_ratio = chinese_chars / total_chars
+
+                            # Only include pages with >30% Chinese characters
+                            # This filters out garbled English pages with broken font encoding
+                            if chinese_ratio > 0.3:
+                                text_parts.append(page_text)
+                                pages_processed += 1
+                            else:
+                                pages_skipped += 1
+                                logger.debug(
+                                    f"Skipped page {page_num + 1} "
+                                    f"(Chinese ratio: {chinese_ratio:.1%}, likely garbled encoding)"
+                                )
+
                     except Exception as e:
                         logger.warning(f"Failed to extract text from page {page_num}: {e}")
                         continue
 
                 text = "\n\n".join(text_parts)
-                logger.info(f"Extracted {len(text)} characters from {len(reader.pages)} PDF pages")
+                logger.info(
+                    f"Extracted {len(text)} characters from {pages_processed}/{len(reader.pages)} PDF pages "
+                    f"({pages_skipped} pages skipped due to encoding issues)"
+                )
                 return text
 
             elif file_type in ["docx", "doc"]:
@@ -191,61 +218,257 @@ class DocumentProcessor:
         overlap: int | None = None,
     ) -> list[str]:
         """
-        Split text into overlapping chunks.
+        Smart semantic chunking for structured and unstructured documents.
+
+        Strategy:
+        1. Detect if document is structured (has article/section markers)
+        2. If structured: chunk by articles/sections
+        3. If not: chunk by paragraphs
+        4. Ensure chunks are within 300-1000 characters
+        5. Add overlap for context preservation
 
         Args:
             text: Text to chunk
-            chunk_size: Size of each chunk in characters (default: 512)
-            overlap: Overlap size in characters (default: 128)
+            chunk_size: Max chunk size in characters (default: 1000)
+            overlap: Overlap size in characters (default: 100)
 
         Returns:
-            List of text chunks
+            List of semantically meaningful text chunks
         """
-        chunk_size = chunk_size or self.chunk_size
-        overlap = overlap or self.chunk_overlap
+        # Set defaults for semantic chunking
+        max_chunk_size = chunk_size or 1000
+        min_chunk_size = 300
+        overlap = overlap or 100
 
-        if chunk_size <= overlap:
-            raise ValueError("Chunk size must be greater than overlap")
+        if not text or not text.strip():
+            return []
 
-        # Clean text: normalize whitespace
-        text = re.sub(r"\s+", " ", text).strip()
+        # Normalize whitespace while preserving paragraph breaks
+        text = re.sub(r"[ \t]+", " ", text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        text = text.strip()
 
-        if len(text) <= chunk_size:
+        # Detect if document is structured
+        is_structured = self._is_structured_document(text)
+
+        if is_structured:
+            logger.info("Detected structured document, chunking by articles/sections")
+            semantic_units = self._split_by_articles(text)
+        else:
+            logger.info("Detected unstructured document, chunking by paragraphs")
+            semantic_units = self._split_by_paragraphs(text)
+
+        # Process semantic units into final chunks
+        chunks = self._process_semantic_units(
+            semantic_units,
+            min_size=min_chunk_size,
+            max_size=max_chunk_size,
+            overlap=overlap,
+        )
+
+        logger.info(
+            f"Created {len(chunks)} chunks from {len(semantic_units)} semantic units"
+        )
+        return chunks
+
+    def _is_structured_document(self, text: str) -> bool:
+        """
+        Detect if document has structured markers (articles, sections).
+
+        Args:
+            text: Document text
+
+        Returns:
+            True if structured markers found
+        """
+        # Patterns for structured document markers
+        patterns = [
+            r"第[一二三四五六七八九十百]+條",  # Chinese: 第一條, 第二條
+            r"Article\s+\d+",  # English: Article 1, Article 2
+            r"Section\s+\d+",  # English: Section 1, Section 2
+            r"第\d+條",  # Chinese with numbers: 第1條
+        ]
+
+        # Count marker occurrences
+        marker_count = 0
+        for pattern in patterns:
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            marker_count += len(matches)
+
+        # Consider structured if 3+ markers found
+        return marker_count >= 3
+
+    def _split_by_articles(self, text: str) -> list[str]:
+        """
+        Split text by article/section markers.
+
+        Args:
+            text: Document text
+
+        Returns:
+            List of article texts
+        """
+        # Combined pattern for all article markers
+        article_pattern = r"(第[一二三四五六七八九十百\d]+條|Article\s+\d+|Section\s+\d+)"
+
+        # Find all article positions
+        articles = []
+        matches = list(re.finditer(article_pattern, text, re.IGNORECASE))
+
+        if not matches:
+            # No markers found, return as single unit
             return [text]
 
+        # Extract text between markers
+        for i, match in enumerate(matches):
+            start = match.start()
+            # End is the start of next article or end of text
+            end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+
+            article_text = text[start:end].strip()
+            if article_text:
+                articles.append(article_text)
+
+        return articles
+
+    def _split_by_paragraphs(self, text: str) -> list[str]:
+        """
+        Split text by paragraphs (double newline).
+
+        Args:
+            text: Document text
+
+        Returns:
+            List of paragraph texts
+        """
+        # Split by double newline (paragraph separator)
+        paragraphs = re.split(r"\n\s*\n", text)
+
+        # Clean and filter empty paragraphs
+        paragraphs = [p.strip() for p in paragraphs if p.strip()]
+
+        return paragraphs if paragraphs else [text]
+
+    def _process_semantic_units(
+        self,
+        units: list[str],
+        min_size: int,
+        max_size: int,
+        overlap: int,
+    ) -> list[str]:
+        """
+        Process semantic units into final chunks with size constraints.
+
+        Args:
+            units: List of semantic units (articles/paragraphs)
+            min_size: Minimum chunk size in characters
+            max_size: Maximum chunk size in characters
+            overlap: Overlap size for context
+
+        Returns:
+            List of processed chunks
+        """
         chunks = []
-        start = 0
+        current_chunk = ""
 
-        while start < len(text):
-            # Get chunk from start to start + chunk_size
-            end = start + chunk_size
+        for unit in units:
+            unit_size = len(unit)
 
-            # If not the last chunk, try to break at sentence/word boundary
-            if end < len(text):
-                # Look for sentence boundary (. ! ?)
-                sentence_end = text.rfind(".", start, end)
-                if sentence_end == -1:
-                    sentence_end = text.rfind("!", start, end)
-                if sentence_end == -1:
-                    sentence_end = text.rfind("?", start, end)
+            # Case 1: Unit fits within max_size
+            if unit_size <= max_size:
+                # If adding this unit exceeds max_size, save current chunk
+                if current_chunk and len(current_chunk) + unit_size > max_size:
+                    chunks.append(current_chunk.strip())
+                    # Start new chunk with overlap from previous
+                    current_chunk = self._get_overlap_text(current_chunk, overlap)
 
-                # If no sentence boundary, look for word boundary
-                if sentence_end > start:
-                    end = sentence_end + 1
-                else:
-                    # Find last space
-                    space_pos = text.rfind(" ", start, end)
-                    if space_pos > start:
-                        end = space_pos
+                # Add unit to current chunk
+                current_chunk += "\n\n" + unit if current_chunk else unit
 
-            chunk = text[start:end].strip()
-            if chunk:
-                chunks.append(chunk)
+                # If current chunk meets min_size, consider saving it
+                if len(current_chunk) >= min_size:
+                    # Save if it's close to max_size or last unit
+                    if len(current_chunk) >= max_size * 0.7 or unit == units[-1]:
+                        chunks.append(current_chunk.strip())
+                        current_chunk = ""
 
-            # Move start position forward with overlap
-            start = end - overlap if end < len(text) else len(text)
+            # Case 2: Unit exceeds max_size, need to split further
+            else:
+                # Save any accumulated chunk first
+                if current_chunk:
+                    chunks.append(current_chunk.strip())
+                    current_chunk = ""
+
+                # Split large unit by sentences
+                sub_chunks = self._split_by_sentences(unit, max_size, overlap)
+                chunks.extend(sub_chunks)
+
+        # Add remaining chunk
+        if current_chunk and len(current_chunk.strip()) > 0:
+            chunks.append(current_chunk.strip())
+
+        return [c for c in chunks if c]
+
+    def _split_by_sentences(
+        self, text: str, max_size: int, overlap: int
+    ) -> list[str]:
+        """
+        Split text by sentences when it exceeds max_size.
+
+        Args:
+            text: Text to split
+            max_size: Maximum chunk size
+            overlap: Overlap size
+
+        Returns:
+            List of sentence-based chunks
+        """
+        # Split by sentence boundaries
+        sentence_pattern = r"[。！？\.!\?]+\s*"
+        sentences = re.split(sentence_pattern, text)
+        sentences = [s.strip() for s in sentences if s.strip()]
+
+        chunks = []
+        current = ""
+
+        for sentence in sentences:
+            # If adding sentence exceeds max_size
+            if current and len(current) + len(sentence) > max_size:
+                chunks.append(current.strip())
+                # Start new chunk with overlap
+                current = self._get_overlap_text(current, overlap) + " " + sentence
+            else:
+                current += " " + sentence if current else sentence
+
+        # Add remaining
+        if current:
+            chunks.append(current.strip())
 
         return chunks
+
+    def _get_overlap_text(self, text: str, overlap_size: int) -> str:
+        """
+        Get last N characters from text for overlap.
+
+        Args:
+            text: Source text
+            overlap_size: Number of characters for overlap
+
+        Returns:
+            Overlap text
+        """
+        if len(text) <= overlap_size:
+            return text
+
+        # Get last overlap_size characters, try to break at word boundary
+        overlap_text = text[-overlap_size:]
+
+        # Find first space to avoid breaking words
+        space_pos = overlap_text.find(" ")
+        if space_pos > 0:
+            overlap_text = overlap_text[space_pos:].strip()
+
+        return overlap_text
 
     def generate_embeddings(self, chunks: list[str]) -> list[list[float]]:
         """

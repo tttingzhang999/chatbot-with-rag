@@ -206,12 +206,12 @@ class Settings(BaseSettings):
 
     # ========== RAG Configuration ==========
     CHUNK_SIZE: int = Field(
-        default=1000,
+        default=512,
         description="Document chunk size in characters",
         ge=100,
     )
     CHUNK_OVERLAP: int = Field(
-        default=200,
+        default=128,
         description="Overlap between consecutive chunks in characters",
         ge=0,
     )
