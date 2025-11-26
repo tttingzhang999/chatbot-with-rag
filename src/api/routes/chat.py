@@ -142,9 +142,9 @@ def get_conversations(
             title=conv.title or "Untitled Conversation",
             created_at=conv.created_at,
             updated_at=conv.updated_at,
-            message_count=len(conv.messages),
+            message_count=msg_count,
         )
-        for conv in conversations
+        for conv, msg_count in conversations
     ]
 
 

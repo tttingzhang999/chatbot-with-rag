@@ -23,11 +23,22 @@ class Document(Base):
     __tablename__ = "documents"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     file_name = Column(String(255), nullable=False)
     file_path = Column(String(512), nullable=False)  # S3 path
     file_type = Column(String(50), nullable=False)  # pdf, docx, txt, etc.
     file_size = Column(Integer)  # bytes
     upload_date = Column(DateTime, default=datetime.utcnow, nullable=False)
+    status = Column(
+        String(20),
+        default="pending",
+        nullable=False,
+    )  # pending, processing, completed, failed
+    error_message = Column(Text, nullable=True)  # Error details if status is failed
     extra_metadata = Column(JSONB, default={})  # Additional flexible metadata
 
     # Relationships

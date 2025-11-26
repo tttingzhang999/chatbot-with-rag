@@ -98,6 +98,34 @@ python -m src.document_processor
 python -m src.retrieval
 ```
 
+### Database Migrations
+
+```bash
+# Create a new migration (auto-generate from model changes)
+uv run alembic revision --autogenerate -m "description of changes"
+
+# Apply all pending migrations
+uv run alembic upgrade head
+
+# Downgrade to a specific revision
+uv run alembic downgrade <revision_id>
+
+# Show current revision
+uv run alembic current
+
+# Show migration history
+uv run alembic history
+
+# Downgrade one revision
+uv run alembic downgrade -1
+```
+
+**Important Notes:**
+- Always use `uv run` prefix when running alembic commands
+- Review auto-generated migrations before applying them
+- Test migrations on local database before production
+- Create meaningful migration messages using conventional commit format
+
 ### Code Quality
 
 ```bash

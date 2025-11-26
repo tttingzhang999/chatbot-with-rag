@@ -5,6 +5,161 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2025-11-25
+
+### Added
+
+#### Authentication & Security
+- User registration system with email validation
+  - `POST /auth/register` - New user registration endpoint
+  - Full name field support (optional)
+  - Password confirmation validation (minimum 6 characters)
+- JWT token-based authentication with access tokens
+- Password hashing utilities using bcrypt (`src/core/security/password.py`)
+- Authorization headers with Bearer token support
+- Secure user session management in frontend
+
+#### Document Processing & Management
+- Document processor service (`src/services/document_service.py`)
+  - Chunking strategy with configurable size and overlap
+  - Text extraction from PDF, DOCX, and TXT files
+  - Background processing simulation (AWS Lambda simulation)
+  - Document status tracking (pending, processing, completed, failed)
+  - Error handling and logging
+- Document management endpoints:
+  - `GET /upload/documents` - List user's uploaded documents
+  - `DELETE /upload/documents/{id}` - Delete document and all chunks
+- Background task processing for async document handling
+- File storage system with unique filename generation
+- Document metadata tracking (file size, type, chunk count, upload date)
+
+#### Database & Models
+- New database migration: `34c68b28c841_add_user_id_status_and_error_message_to_`
+  - Added `user_id` foreign key to documents table (CASCADE on delete)
+  - Added `status` field (varchar 20) for processing status
+  - Added `error_message` field (text, nullable) for error tracking
+- Document model enhancements with new fields
+- Database session improvements for background tasks
+
+#### Frontend (Gradio)
+- Complete UI redesign with tabbed interface:
+  - Registration tab (index 0) - New user registration form
+  - Login tab (index 1) - User authentication
+  - Chat tab (index 2) - Multi-turn conversations
+  - Document Management tab (index 3) - File upload and management
+- Bot avatar image (`assets/bot_avatar.png`)
+- Document list display with DataFrames:
+  - Shows document ID, filename, type, size, status, chunk count, upload date
+  - Real-time status updates (pending, processing, completed, failed)
+- Document deletion functionality with confirmation
+- Enhanced chat interface:
+  - User/bot avatars
+  - Improved message formatting
+  - Better error handling
+  - Real-time conversation loading
+- Session state management:
+  - User info (user_id, username, email, access_token)
+  - Current conversation tracking
+- Interactive button states based on authentication
+- Loading indicators for async operations
+- Logout functionality
+- Refresh buttons for conversations and documents
+- Chinese language UI (Traditional Chinese)
+
+#### Documentation
+- Database migrations guide in `CLAUDE.md`
+  - Alembic command reference
+  - Best practices for migrations
+  - Important notes on using `uv run` prefix
+  - Migration workflow guidelines
+
+### Changed
+
+#### API Routes
+- **Upload route** (`src/api/routes/upload.py`) - Complete rewrite:
+  - From simple file acceptance to full document processing
+  - Added background task integration
+  - Enhanced error handling and validation
+  - File type validation (pdf, txt, docx)
+  - Document record creation in database
+  - Status messages with detailed feedback
+- **Chat route** (`src/api/routes/chat.py`) - Performance optimization:
+  - Fixed conversation list query to include message count efficiently
+  - Optimized database query to avoid N+1 problem
+  - Returns message count directly from query
+
+#### Frontend
+- Gradio interface completely redesigned:
+  - From simple login/chat to full-featured application
+  - Multi-tab navigation system
+  - Enhanced user experience with better feedback
+  - Improved error messages and status displays
+  - Better visual hierarchy and layout
+- Authentication flow improved:
+  - Registration and login in separate tabs
+  - Token-based API calls
+  - Automatic tab switching after successful auth
+  - Button state management based on auth status
+
+#### Configuration
+- Database session management updated for background task support
+- API dependency injection for better session handling
+
+### Fixed
+
+- Conversation list performance issue (N+1 query problem)
+  - Now returns message count directly from optimized query
+  - Significantly faster for users with many conversations
+- Document model SQLAlchemy compatibility
+- Background task database session handling
+
+### Technical Details
+
+- **Document Processing**:
+  - Chunk size: 512 characters (configurable)
+  - Chunk overlap: 50 characters (configurable)
+  - Supported file types: PDF, DOCX, TXT
+  - Max file size: Not enforced (TBD)
+  - Processing: Background tasks (simulates AWS Lambda)
+- **Storage**:
+  - Local: `uploads/` directory
+  - Filename format: `{uuid}_{original_filename}`
+- **Authentication**:
+  - JWT tokens with Bearer scheme
+  - Password hashing: bcrypt with automatic salt
+  - Token stored in frontend session
+- **Database**:
+  - New migration applied: document fields extended
+  - Foreign key constraints with CASCADE delete
+  - Status tracking for document processing pipeline
+- **UI Language**: Traditional Chinese (繁體中文)
+
+### Migration Notes
+
+To apply this version's database changes:
+
+```bash
+# Apply new migration
+uv run alembic upgrade head
+
+# Verify current revision
+uv run alembic current
+```
+
+### Breaking Changes
+
+- Document upload API now requires authentication token (not just user ID header)
+- Document model structure changed (requires migration)
+- Frontend session state structure changed
+
+### Known Limitations
+
+- Document processing is simulated (no actual chunking/embedding yet)
+- File uploads stored locally (S3 integration pending)
+- No file size limits enforced
+- Background processing is synchronous simulation (true async pending)
+- LLM and embedding integration not yet implemented
+
 ## [0.1.0] - 2025-11-25
 
 ### Added

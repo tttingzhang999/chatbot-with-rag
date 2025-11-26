@@ -5,6 +5,7 @@ Chat service for handling conversations and messages.
 import uuid
 from datetime import datetime
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from src.models import Conversation, Message, MessageRole
@@ -135,9 +136,9 @@ def get_user_conversations(
     db: Session,
     user_id: uuid.UUID,
     limit: int = 20,
-) -> list[Conversation]:
+) -> list[tuple[Conversation, int]]:
     """
-    Get all conversations for a user.
+    Get all conversations for a user with message counts.
 
     Args:
         db: Database session
@@ -145,15 +146,32 @@ def get_user_conversations(
         limit: Maximum number of conversations to retrieve
 
     Returns:
-        list[Conversation]: List of conversations
+        list[tuple[Conversation, int]]: List of (conversation, message_count) tuples
     """
-    return (
-        db.query(Conversation)
+    # Use a subquery to count messages for each conversation efficiently
+    message_count_subquery = (
+        db.query(
+            Message.conversation_id,
+            func.count(Message.id).label("message_count"),
+        )
+        .group_by(Message.conversation_id)
+        .subquery()
+    )
+
+    # Join conversations with message counts
+    results = (
+        db.query(Conversation, func.coalesce(message_count_subquery.c.message_count, 0))
+        .outerjoin(
+            message_count_subquery,
+            Conversation.id == message_count_subquery.c.conversation_id,
+        )
         .filter(Conversation.user_id == user_id)
         .order_by(Conversation.updated_at.desc())
         .limit(limit)
         .all()
     )
+
+    return results
 
 
 def delete_conversation(db: Session, conversation_id: uuid.UUID, user_id: uuid.UUID) -> bool:
