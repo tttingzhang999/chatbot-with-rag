@@ -5,7 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0] - 2025-11-25
+## [0.3.0] - 2025-11-26 - AWS Bedrock Integration
+
+#### Added
+
+- **AWS Bedrock Integration**
+  - Added `src/core/bedrock_client.py`: Modular Amazon Bedrock client to interact with Claude Sonnet 4 LLM.
+  - Integrated Bedrock LLM invocation in chat service.
+  - Added support for configuration-based LLM hyperparameters (`LLM_TEMPERATURE`, `LLM_TOP_P`, `LLM_MAX_TOKENS`) and global model parameters.
+  - New environment variable support: `AWS_REGION`, `AWS_PROFILE`, LLM and embedding model IDs.
+  - Added `.env.example` documentation and hard requirements for `AWS_REGION`, `AWS_PROFILE` config.
+
+- **System Prompts & HR RAG Mode**
+  - Added system prompt templates for HR advisor chatbot, supporting both standard and RAG-enabled modes (`src/prompts/system_prompts.py`).
+  - Support for Traditional Chinese response format and HR-specific conversational limitations.
+  - Centralized prompt logic with `get_system_prompt()`.
+
+- **Chat Backend Enhancements**
+  - Fully replaced echo logic with real LLM responses in `src/services/chat_service.py`.
+  - Conversation history formatting for multi-turn chat and system prompt injection.
+  - Error handling and logging integrated with backend generation logic.
+
+- **Configuration Improvements**
+  - Centralized all LLM and RAG parameters in `src/core/config.py` (`Settings`), including: max conversation history, chunk size/overlap, search ratio, RAG toggle (`ENABLE_RAG`).
+  - Updated `.env.example` and documentation for new config variables.
+
+- **Scripts & Developer Experience**
+  - Added `scripts/start_backend_with_aws.sh` to simplify starting backend with AWS Vault credentials.
+  - Improved guidance and documentation for AWS Vault workflow.
+
+- **Documentation**
+  - Updated README: clarified project phases, AWS configuration steps, and marked completed tasks in phase 1 and phase 4.
+  - Expanded setup and deployment docs with Aurora, LLM config, and local/test mode differences.
+
+#### Changed
+
+- Updated Chat Service to support Bedrock Claude Sonnet 4 responses with conversation history and system prompt.
+- Restructured prompt handling to support both HR advisor standard and RAG document-augmented flows (RAG toggling supported but not enabled by default).
+- Improved error handling/logging around LLM failures and user messaging.
+
+#### Fixed
+
+- Status: No major bug fixes in this version.
+
+#### Deprecated
+
+- Echo-based chat responses have been removed in favor of direct Claude Sonnet 4 integration.
+
 
 ### Added
 
