@@ -89,16 +89,23 @@ def save_message(
     return message
 
 
-def generate_response(user_message: str, conversation_history: list[Message]) -> str:
+def generate_response(
+    user_message: str,
+    conversation_history: list[Message],
+    db: Session | None = None,
+    user_id: uuid.UUID | None = None,
+) -> tuple[str, list[dict] | None]:
     """
     Generate response to user message using Claude Sonnet 4 via Bedrock.
 
     Args:
         user_message: User's message
         conversation_history: Previous messages in the conversation
+        db: Database session (required if RAG is enabled)
+        user_id: User ID (required if RAG is enabled)
 
     Returns:
-        str: Generated response from Claude
+        tuple: (Generated response, Retrieved chunks info or None)
 
     Raises:
         Exception: If the LLM call fails
@@ -113,8 +120,66 @@ def generate_response(user_message: str, conversation_history: list[Message]) ->
             f"(limit: {settings.MAX_CONVERSATION_HISTORY} turns)"
         )
 
-        # Get system prompt (RAG disabled for now)
-        system_prompt = get_system_prompt(use_rag=settings.ENABLE_RAG)
+        # Initialize retrieved chunks
+        retrieved_chunks = None
+        retrieval_context = ""
+
+        # Perform RAG retrieval if enabled
+        if settings.ENABLE_RAG:
+            if not db or not user_id:
+                logger.warning("RAG enabled but db/user_id not provided, skipping retrieval")
+            else:
+                try:
+                    from src.services.retrieval_service import get_retrieval_service
+
+                    logger.info("Performing hybrid search for RAG context")
+
+                    # Get retrieval service and perform hybrid search
+                    retrieval_service = get_retrieval_service(db)
+                    search_results = retrieval_service.hybrid_search(
+                        query_text=user_message,
+                        top_k=settings.TOP_K_CHUNKS,
+                        user_id=user_id,
+                    )
+
+                    if search_results:
+                        # Format retrieved chunks for context
+                        context_parts = []
+                        retrieved_chunks = []
+
+                        for idx, result in enumerate(search_results, 1):
+                            context_parts.append(
+                                f"[Document {idx}: {result['file_name']}]\n"
+                                f"{result['content']}\n"
+                            )
+
+                            retrieved_chunks.append(
+                                {
+                                    "chunk_id": result["chunk_id"],
+                                    "document_id": result["document_id"],
+                                    "file_name": result["file_name"],
+                                    "score": result["score"],
+                                    "semantic_score": result.get("semantic_score"),
+                                    "bm25_score": result.get("bm25_score"),
+                                }
+                            )
+
+                        retrieval_context = "\n".join(context_parts)
+                        logger.info(
+                            f"Retrieved {len(search_results)} chunks for RAG context "
+                            f"(total {len(retrieval_context)} characters)"
+                        )
+                    else:
+                        logger.info("No relevant documents found for user query")
+
+                except Exception as e:
+                    logger.error(f"RAG retrieval failed: {e}")
+                    # Continue without RAG context rather than failing completely
+
+        # Get system prompt with or without RAG context
+        system_prompt = get_system_prompt(
+            use_rag=settings.ENABLE_RAG, context=retrieval_context
+        )
 
         # Get Bedrock client and invoke Claude
         bedrock_client = get_bedrock_client()
@@ -125,21 +190,33 @@ def generate_response(user_message: str, conversation_history: list[Message]) ->
         )
 
         logger.info("Response generated successfully")
-        return response
+        return response, retrieved_chunks
 
     except Exception as e:
         logger.error(f"Failed to generate response: {e}")
-        # Return a user-friendly error message
-        return (
-            "Sorry, I encountered an issue processing your request. "
-            "Please try again later or contact technical support."
-        )
+
+        # Check if this is a throttling error
+        error_str = str(e)
+        if "ThrottlingException" in error_str or "Too many requests" in error_str:
+            error_msg = (
+                "I'm currently experiencing high traffic and need to slow down. "
+                "Please wait a few seconds and try again. "
+                "If this persists, please wait 1-2 minutes before retrying."
+            )
+        else:
+            # Return a generic user-friendly error message
+            error_msg = (
+                "Sorry, I encountered an issue processing your request. "
+                "Please try again later or contact technical support."
+            )
+
+        return error_msg, None
 
 
 def get_conversation_history(
     db: Session,
     conversation_id: uuid.UUID,
-    limit: int = 50,
+    limit: int | None = None,
 ) -> list[Message]:
     """
     Get conversation history.
@@ -147,11 +224,14 @@ def get_conversation_history(
     Args:
         db: Database session
         conversation_id: Conversation ID
-        limit: Maximum number of messages to retrieve
+        limit: Maximum number of messages to retrieve (defaults to config setting)
 
     Returns:
         list[Message]: List of messages
     """
+    if limit is None:
+        limit = settings.CONVERSATION_HISTORY_LIMIT
+
     return (
         db.query(Message)
         .filter(Message.conversation_id == conversation_id)
@@ -164,7 +244,7 @@ def get_conversation_history(
 def get_user_conversations(
     db: Session,
     user_id: uuid.UUID,
-    limit: int = 20,
+    limit: int | None = None,
 ) -> list[tuple[Conversation, int]]:
     """
     Get all conversations for a user with message counts.
@@ -172,11 +252,14 @@ def get_user_conversations(
     Args:
         db: Database session
         user_id: User ID
-        limit: Maximum number of conversations to retrieve
+        limit: Maximum number of conversations to retrieve (defaults to config setting)
 
     Returns:
         list[tuple[Conversation, int]]: List of (conversation, message_count) tuples
     """
+    if limit is None:
+        limit = settings.USER_CONVERSATIONS_LIMIT
+
     # Use a subquery to count messages for each conversation efficiently
     message_count_subquery = (
         db.query(

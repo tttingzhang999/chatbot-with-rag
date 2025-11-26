@@ -7,10 +7,12 @@ from pathlib import Path
 import gradio as gr
 import requests
 
+from src.core.config import settings
+
 # Paths / configuration
-API_BASE_URL = "http://localhost:8000"
-ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
-BOT_AVATAR_PATH = ASSETS_DIR / "bot_avatar.png"
+API_BASE_URL = settings.BACKEND_API_URL
+ASSETS_DIR = Path(__file__).resolve().parent.parent / settings.ASSETS_DIR
+BOT_AVATAR_PATH = ASSETS_DIR / settings.BOT_AVATAR_FILENAME
 BOT_AVATAR_IMAGE = str(BOT_AVATAR_PATH) if BOT_AVATAR_PATH.exists() else None
 
 # Global state
@@ -73,7 +75,9 @@ def register(
 
         # Send registration request
         response = requests.post(
-            f"{API_BASE_URL}/auth/register", json=register_data, timeout=5
+            f"{API_BASE_URL}/auth/register",
+            json=register_data,
+            timeout=settings.HTTP_TIMEOUT_SHORT,
         )
 
         if response.status_code == 201:
@@ -124,7 +128,7 @@ def login(username: str, password: str) -> tuple[str, gr.update, gr.update, gr.u
         response = requests.post(
             f"{API_BASE_URL}/auth/login",
             json={"username": username.strip(), "password": password},
-            timeout=5,
+            timeout=settings.HTTP_TIMEOUT_SHORT,
         )
 
         if response.status_code == 200:
@@ -184,7 +188,7 @@ def send_message(
                 "conversation_id": current_conversation_id,
             },
             headers=get_auth_headers(),
-            timeout=10,
+            timeout=settings.HTTP_TIMEOUT_DEFAULT,
         )
 
         if response.status_code == 200:
@@ -229,7 +233,7 @@ def load_conversations() -> list:
         response = requests.get(
             f"{API_BASE_URL}/chat/conversations",
             headers=get_auth_headers(),
-            timeout=5,
+            timeout=settings.HTTP_TIMEOUT_SHORT,
         )
 
         if response.status_code == 200:
@@ -284,7 +288,7 @@ def load_conversation_messages(conversation_id: str) -> list:
         response = requests.get(
             f"{API_BASE_URL}/chat/conversations/{conversation_id}",
             headers=get_auth_headers(),
-            timeout=5,
+            timeout=settings.HTTP_TIMEOUT_SHORT,
         )
 
         if response.status_code == 200:
@@ -331,7 +335,7 @@ def upload_file(file) -> tuple[str, gr.update, list]:
                 f"{API_BASE_URL}/upload/document",
                 files=files,
                 headers=get_auth_headers(),
-                timeout=30,
+                timeout=settings.HTTP_TIMEOUT_UPLOAD,
             )
 
         if response.status_code == 200:
@@ -362,7 +366,7 @@ def load_documents() -> list:
         response = requests.get(
             f"{API_BASE_URL}/upload/documents",
             headers=get_auth_headers(),
-            timeout=5,
+            timeout=settings.HTTP_TIMEOUT_SHORT,
         )
 
         if response.status_code == 200:
@@ -408,7 +412,7 @@ def delete_document(document_id: str) -> tuple[str, gr.update, list]:
         response = requests.delete(
             f"{API_BASE_URL}/upload/documents/{document_id.strip()}",
             headers=get_auth_headers(),
-            timeout=5,
+            timeout=settings.HTTP_TIMEOUT_SHORT,
         )
 
         if response.status_code == 200:
@@ -582,7 +586,7 @@ with gr.Blocks(title="HR Chatbot", theme=gr.themes.Soft()) as demo:
                     gr.Markdown("### 📤 上傳文件")
                     file_upload = gr.File(
                         label="選擇檔案",
-                        file_types=[".pdf", ".txt", ".docx"],
+                        file_types=[f".{ext}" for ext in settings.SUPPORTED_FILE_TYPES],
                     )
                     upload_btn = gr.Button("上傳", variant="primary", interactive=False)
 
@@ -704,9 +708,9 @@ if __name__ == "__main__":
     print("=" * 60)
     print("🚀 Starting HR Chatbot Gradio Frontend")
     print("=" * 60)
-    print("Frontend URL: http://localhost:7860")
-    print("Backend API:  http://localhost:8000")
-    print("API Docs:     http://localhost:8000/docs")
+    print(f"Frontend URL: http://localhost:{settings.GRADIO_PORT}")
+    print(f"Backend API:  {settings.BACKEND_API_URL}")
+    print(f"API Docs:     {settings.BACKEND_API_URL}/docs")
     print("=" * 60)
-    print("\n⚠️  Make sure FastAPI backend is running on port 8000\n")
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    print(f"\n⚠️  Make sure FastAPI backend is running on {settings.BACKEND_API_URL}\n")
+    demo.launch(server_name=settings.GRADIO_HOST, server_port=settings.GRADIO_PORT)

@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-11-28 - File Uploads, Parsing, and Document Support
+
+#### Added
+
+- **File Upload and Document Parsing Support**
+  - Added robust document upload functionality (PDF, TXT, DOCX, DOC) with file type validation.
+  - Integrated document parsing pipeline using:
+    - `python-docx` for DOCX support.
+    - `pypdf` for PDF extraction.
+  - Uploaded files stored to configurable directory (`UPLOAD_DIR`), supported file types and upload limits are now configurable in `.env.example`.
+  - Added backend routes and logic for file upload, parse, and indexing; Error handling added for unsupported/invalid files.
+  - Environment variables in `.env.example` for upload and parsing configuration, with clearly marked defaults and options.
+
+- **Frontend Integration**
+  - Improved Gradio frontend to support uploading documents for embedding/RAG use.
+  - Extended user instructions and placeholders related to document uploads.
+
+- **Packaging**
+  - Added new dependencies:
+    - `python-docx`
+    - `pypdf`
+    - Documented these in requirements/lock files.
+
+#### Changed
+
+- Updated API and backend structure to support multi-format document ingestion and indexing.
+- Improved logging and validation in file handling flows.
+- Enhanced changelog and README documentation to cover file upload features and setup.
+- Updated `.env.example` configuration with new sections for File Upload and Frontend settings.
+
+#### Fixed
+
+- Addressed minor bugs in previous file handling sample code.
+- Improved input validation and error messages for upload endpoints.
+
+#### Deprecated
+
+- No deprecations in this release.
+
+
 ## [0.3.0] - 2025-11-26 - AWS Bedrock Integration
 
 #### Added

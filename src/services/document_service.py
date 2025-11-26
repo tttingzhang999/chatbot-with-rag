@@ -15,6 +15,7 @@ from uuid import UUID
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
+from src.core.config import settings
 from src.models.document import Document, DocumentChunk
 
 logger = logging.getLogger(__name__)
@@ -30,8 +31,8 @@ class DocumentProcessor:
     def __init__(self, db: Session):
         """Initialize processor with database session."""
         self.db = db
-        self.chunk_size = 512  # Default chunk size in characters
-        self.chunk_overlap = 128  # Default overlap size
+        self.chunk_size = settings.CHUNK_SIZE
+        self.chunk_overlap = settings.CHUNK_OVERLAP
 
     def process_document_sync(
         self,
@@ -113,44 +114,75 @@ class DocumentProcessor:
         Returns:
             Extracted text content
 
-        Note:
-            This is a placeholder implementation. For production:
-            - PDF: Use pypdf, PyMuPDF, or pdfplumber
-            - DOCX: Use python-docx
-            - TXT: Direct read with encoding detection
+        Raises:
+            FileNotFoundError: If file doesn't exist
+            ValueError: If file type is unsupported
         """
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
 
         file_type = file_type.lower()
 
-        if file_type == "txt":
-            # Read text file directly
-            with open(file_path, encoding="utf-8", errors="ignore") as f:
-                return f.read()
+        try:
+            if file_type == "txt":
+                # Read text file with UTF-8 encoding
+                with open(file_path, encoding="utf-8", errors="ignore") as f:
+                    text = f.read()
+                logger.info(f"Extracted {len(text)} characters from TXT file")
+                return text
 
-        elif file_type == "pdf":
-            # TODO: Implement PDF extraction
-            # Recommended: pypdf or PyMuPDF (fitz)
-            # Example:
-            # from pypdf import PdfReader
-            # reader = PdfReader(file_path)
-            # text = "\n".join([page.extract_text() for page in reader.pages])
-            logger.warning("PDF extraction not yet implemented, returning placeholder")
-            return f"[PDF content placeholder from {Path(file_path).name}]\n\nThis is sample text content that would be extracted from the PDF file. In production, this will be replaced with actual text extraction using pypdf or PyMuPDF library."
+            elif file_type == "pdf":
+                # Extract text from PDF using pypdf
+                from pypdf import PdfReader
 
-        elif file_type in ["docx", "doc"]:
-            # TODO: Implement DOCX extraction
-            # Recommended: python-docx
-            # Example:
-            # from docx import Document
-            # doc = Document(file_path)
-            # text = "\n".join([para.text for para in doc.paragraphs])
-            logger.warning("DOCX extraction not yet implemented, returning placeholder")
-            return f"[DOCX content placeholder from {Path(file_path).name}]\n\nThis is sample text content that would be extracted from the DOCX file. In production, this will be replaced with actual text extraction using python-docx library."
+                reader = PdfReader(file_path)
+                text_parts = []
 
-        else:
-            raise ValueError(f"Unsupported file type: {file_type}")
+                for page_num, page in enumerate(reader.pages):
+                    try:
+                        page_text = page.extract_text()
+                        if page_text.strip():
+                            text_parts.append(page_text)
+                    except Exception as e:
+                        logger.warning(f"Failed to extract text from page {page_num}: {e}")
+                        continue
+
+                text = "\n\n".join(text_parts)
+                logger.info(f"Extracted {len(text)} characters from {len(reader.pages)} PDF pages")
+                return text
+
+            elif file_type in ["docx", "doc"]:
+                # Extract text from DOCX using python-docx
+                from docx import Document
+
+                doc = Document(file_path)
+                text_parts = []
+
+                # Extract text from paragraphs
+                for para in doc.paragraphs:
+                    if para.text.strip():
+                        text_parts.append(para.text)
+
+                # Extract text from tables
+                for table in doc.tables:
+                    for row in table.rows:
+                        for cell in row.cells:
+                            if cell.text.strip():
+                                text_parts.append(cell.text)
+
+                text = "\n".join(text_parts)
+                logger.info(f"Extracted {len(text)} characters from DOCX file")
+                return text
+
+            else:
+                raise ValueError(f"Unsupported file type: {file_type}")
+
+        except ImportError as e:
+            logger.error(f"Missing dependency for {file_type} extraction: {e}")
+            raise ValueError(
+                f"Cannot extract {file_type} files. Missing required library. "
+                f"Please install dependencies."
+            )
 
     def chunk_text(
         self,
@@ -217,7 +249,7 @@ class DocumentProcessor:
 
     def generate_embeddings(self, chunks: list[str]) -> list[list[float]]:
         """
-        Generate embeddings for text chunks using Cohere Embed v4.
+        Generate embeddings for text chunks using Cohere Embed v4 via Bedrock.
 
         Args:
             chunks: List of text chunks
@@ -225,29 +257,23 @@ class DocumentProcessor:
         Returns:
             List of embedding vectors (1024 dimensions each)
 
-        Note:
-            This is a placeholder. For production, use:
-            - Amazon Bedrock with Cohere Embed v4
-            - Model ID: cohere.embed-english-v3 or cohere.embed-multilingual-v3
+        Raises:
+            Exception: If embedding generation fails
         """
-        # TODO: Implement Bedrock embedding generation
-        # Example using boto3:
-        # import boto3
-        # bedrock = boto3.client('bedrock-runtime', region_name='us-east-1')
-        # response = bedrock.invoke_model(
-        #     modelId='cohere.embed-english-v3',
-        #     body=json.dumps({
-        #         'texts': chunks,
-        #         'input_type': 'search_document',
-        #         'embedding_types': ['float']
-        #     })
-        # )
+        from src.core.bedrock_client import get_bedrock_client
 
-        logger.warning("Bedrock embedding generation not yet implemented, using mock")
+        try:
+            bedrock_client = get_bedrock_client()
+            embeddings = bedrock_client.generate_embeddings(
+                texts=chunks, input_type="search_document"
+            )
 
-        # Return mock embeddings (1024 dimensions, all zeros)
-        # In production, this will return actual embeddings from Cohere
-        return [[0.0] * 1024 for _ in chunks]
+            logger.info(f"Generated {len(embeddings)} embeddings using Bedrock")
+            return embeddings
+
+        except Exception as e:
+            logger.error(f"Failed to generate embeddings via Bedrock: {e}")
+            raise
 
     def create_bm25_indexes(self, chunks: list[str]) -> list[str]:
         """

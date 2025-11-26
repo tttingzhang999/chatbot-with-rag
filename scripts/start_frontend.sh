@@ -2,11 +2,26 @@
 
 # Start Gradio frontend
 
-echo "Starting Gradio frontend on http://localhost:7860"
-echo "Make sure FastAPI backend is running on http://localhost:8000"
-echo ""
-
+# Change to project root directory
 cd "$(dirname "$0")/.." || exit
+
+# Load environment variables from .env file
+if [ -f ".env" ]; then
+    echo "Loading environment variables from .env file..."
+    set -a
+    source .env
+    set +a
+fi
+
+echo "=========================================="
+echo "Starting Gradio Frontend"
+echo "=========================================="
+echo "Frontend URL: http://localhost:${GRADIO_PORT:-7860}"
+echo "Backend API:  ${BACKEND_API_URL:-http://localhost:8000}"
+echo "=========================================="
+echo ""
+echo "⚠️  Make sure FastAPI backend is running!"
+echo ""
 
 # Activate virtual environment if it exists
 if [ -d ".venv" ]; then

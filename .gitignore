@@ -84,3 +84,6 @@ site/
 *.temp
 tmp/
 temp/
+
+# Documents
+*.pdf

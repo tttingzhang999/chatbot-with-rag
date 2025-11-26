@@ -71,8 +71,8 @@ class DocumentChunk(Base):
     chunk_index = Column(Integer, nullable=False)  # Order within document
     content = Column(Text, nullable=False)  # Actual text content
 
-    # Vector embedding for semantic search (Cohere Embed v4: 1024 dimensions)
-    embedding = Column(Vector(1024))
+    # Vector embedding for semantic search (Cohere Embed v4 via Bedrock: 1536 dimensions)
+    embedding = Column(Vector(1536))
 
     # Full-text search vector for BM25/TFIDF search
     content_tsvector = Column(TSVECTOR)

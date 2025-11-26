@@ -2,9 +2,12 @@
 Simple script to test the API endpoints.
 """
 
+import os
+
 import requests
 
-API_BASE_URL = "http://localhost:8000"
+# Read from environment variable or use default
+API_BASE_URL = os.getenv("BACKEND_API_URL", "http://localhost:8000")
 
 
 def test_health_check():

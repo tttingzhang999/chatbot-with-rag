@@ -12,6 +12,7 @@ from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile,
 from pydantic import BaseModel
 
 from src.api.deps import CurrentUser, DBSession
+from src.core.config import settings
 from src.models.document import Document
 from src.services.document_service import DocumentProcessor, delete_document, get_user_documents
 
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/upload", tags=["upload"])
 
 # Upload directory (for local development)
-UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR = Path(settings.UPLOAD_DIR)
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 
@@ -130,12 +131,16 @@ async def upload_document(
             detail="No filename provided",
         )
 
+    # Extract just the filename (without path) from potentially full path
+    original_filename = Path(file.filename).name
+
     # Get file extension
-    file_ext = Path(file.filename).suffix.lower().lstrip(".")
-    if file_ext not in ["pdf", "txt", "docx", "doc"]:
+    file_ext = Path(original_filename).suffix.lower().lstrip(".")
+    if file_ext not in settings.SUPPORTED_FILE_TYPES:
+        supported_types = ", ".join(settings.SUPPORTED_FILE_TYPES)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported file type: {file_ext}. Supported: pdf, txt, docx",
+            detail=f"Unsupported file type: {file_ext}. Supported: {supported_types}",
         )
 
     try:
@@ -145,7 +150,7 @@ async def upload_document(
 
         # Generate unique filename
         document_id = uuid.uuid4()
-        unique_filename = f"{document_id}_{file.filename}"
+        unique_filename = f"{document_id}_{original_filename}"
         file_path = UPLOAD_DIR / unique_filename
 
         # Save file to local storage
@@ -158,7 +163,7 @@ async def upload_document(
         document = Document(
             id=document_id,
             user_id=current_user.id,
-            file_name=file.filename,
+            file_name=original_filename,
             file_path=str(file_path),
             file_type=file_ext,
             file_size=file_size,
@@ -171,8 +176,6 @@ async def upload_document(
         logger.info(f"Document record created: {document_id}")
 
         # Trigger background processing (simulates Lambda)
-        from src.core.config import settings
-
         background_tasks.add_task(
             process_document_background,
             document_id=document_id,
@@ -183,7 +186,7 @@ async def upload_document(
 
         return UploadResponse(
             document_id=str(document_id),
-            filename=file.filename,
+            filename=original_filename,
             size=file_size,
             content_type=file.content_type or "application/octet-stream",
             message="File uploaded successfully. Processing started in background.",

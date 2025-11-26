@@ -91,15 +91,21 @@ def send_message(
         content=request.message,
     )
 
-    # Generate response (currently echo, will be replaced with LLM)
-    assistant_content = chat_service.generate_response(request.message, history)
+    # Generate response with RAG
+    assistant_content, retrieved_chunks = chat_service.generate_response(
+        user_message=request.message,
+        conversation_history=history,
+        db=db,
+        user_id=current_user.id,
+    )
 
-    # Save assistant message
+    # Save assistant message with retrieved chunks
     assistant_message = chat_service.save_message(
         db=db,
         conversation_id=conversation.id,
         role=MessageRole.ASSISTANT,
         content=assistant_content,
+        retrieved_chunks=retrieved_chunks,
     )
 
     return ChatResponse(

@@ -6,18 +6,19 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.routes import auth, chat, upload
+from src.core.config import settings
 
 # Create FastAPI app
 app = FastAPI(
-    title="HR Chatbot API",
-    description="API for HR Chatbot with RAG capabilities",
-    version="0.0.1",
+    title=settings.API_TITLE,
+    description=settings.API_DESCRIPTION,
+    version=settings.API_VERSION,
 )
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify exact origins
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,8 +34,8 @@ app.include_router(upload.router)
 def root() -> dict:
     """Root endpoint."""
     return {
-        "message": "HR Chatbot API",
-        "version": "0.0.1",
+        "message": settings.API_TITLE,
+        "version": settings.API_VERSION,
         "docs": "/docs",
     }
 
@@ -50,7 +51,7 @@ if __name__ == "__main__":
 
     uvicorn.run(
         "src.main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
+        host=settings.UVICORN_HOST,
+        port=settings.UVICORN_PORT,
+        reload=settings.UVICORN_RELOAD,
     )

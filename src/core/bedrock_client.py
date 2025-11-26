@@ -3,14 +3,18 @@ Amazon Bedrock client for LLM and embedding operations.
 
 This module provides a wrapper around AWS Bedrock services for:
 - Claude Sonnet 4 LLM invocations
+- Cohere Embed v4 embedding generation
 - Conversation history management
 - Error handling and retries
 """
 
+import json
 import logging
+import time
 from typing import Any
 
 import boto3
+from botocore.config import Config
 from langchain_aws import ChatBedrock
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
@@ -30,10 +34,27 @@ class BedrockClient:
         # so we only specify the region and let boto3 use the default credential chain
         self.session = boto3.Session(region_name=settings.AWS_REGION)
 
+        # Configure retry strategy with exponential backoff for throttling
+        retry_config = Config(
+            retries={
+                "max_attempts": 8,  # Increased from default 4
+                "mode": "adaptive",  # Adaptive mode adjusts retry behavior based on success/failure
+            },
+            # Add connection timeout and read timeout
+            connect_timeout=30,
+            read_timeout=60,
+        )
+
+        # Initialize bedrock-runtime client for embeddings with retry config
+        self.bedrock_runtime = self.session.client(
+            "bedrock-runtime",
+            config=retry_config,
+        )
+
         # Initialize ChatBedrock for Claude Sonnet 4
         self.llm = ChatBedrock(
             model_id=settings.LLM_MODEL_ID,
-            client=self.session.client("bedrock-runtime"),
+            client=self.bedrock_runtime,
             model_kwargs={
                 "temperature": settings.LLM_TEMPERATURE,
                 "top_p": settings.LLM_TOP_P,
@@ -42,8 +63,8 @@ class BedrockClient:
         )
 
         logger.info(
-            f"BedrockClient initialized with model: {settings.LLM_MODEL_ID}, "
-            f"region: {settings.AWS_REGION}"
+            f"BedrockClient initialized with LLM: {settings.LLM_MODEL_ID}, "
+            f"Embedding: {settings.EMBEDDING_MODEL_ID}, region: {settings.AWS_REGION}"
         )
 
     def invoke_claude(
@@ -96,6 +117,116 @@ class BedrockClient:
         except Exception as e:
             logger.error(f"Failed to invoke Claude: {e}")
             raise
+
+    def generate_embeddings(
+        self,
+        texts: list[str],
+        input_type: str = "search_document",
+        batch_size: int = 96,
+    ) -> list[list[float]]:
+        """
+        Generate embeddings for a list of texts using Cohere Embed v4.
+
+        Args:
+            texts: List of text strings to embed
+            input_type: Type of input text. Options:
+                - "search_document": For document chunks (default)
+                - "search_query": For search queries
+            batch_size: Maximum number of texts to process in one API call (max 96)
+
+        Returns:
+            List of embedding vectors (1024 dimensions each)
+
+        Raises:
+            Exception: If the Bedrock API call fails
+        """
+        if not texts:
+            return []
+
+        # Cohere Embed v4 supports up to 96 texts per request
+        batch_size = min(batch_size, 96)
+        all_embeddings = []
+
+        try:
+            # Process in batches to avoid API limits
+            for i in range(0, len(texts), batch_size):
+                batch = texts[i : i + batch_size]
+                batch_num = i // batch_size + 1
+                total_batches = (len(texts) + batch_size - 1) // batch_size
+
+                logger.debug(
+                    f"Generating embeddings for batch {batch_num}/{total_batches} "
+                    f"({len(batch)} texts)"
+                )
+
+                # Add delay between batches to avoid rate limiting (except for first batch)
+                if i > 0:
+                    delay = 0.5  # 500ms delay between batches
+                    logger.debug(f"Adding {delay}s delay to avoid throttling")
+                    time.sleep(delay)
+
+                # Prepare request body for Cohere Embed v4
+                request_body = {
+                    "texts": batch,
+                    "input_type": input_type,
+                    "embedding_types": ["float"],
+                }
+
+                # Invoke Bedrock model with retry handling
+                try:
+                    response = self.bedrock_runtime.invoke_model(
+                        modelId=settings.EMBEDDING_MODEL_ID,
+                        contentType="application/json",
+                        accept="application/json",
+                        body=json.dumps(request_body),
+                    )
+                except Exception as e:
+                    # If throttling occurs even with retries, log and re-raise
+                    if "ThrottlingException" in str(e):
+                        logger.warning(
+                            f"Throttling detected on batch {batch_num}/{total_batches}, "
+                            "retries exhausted"
+                        )
+                    raise
+
+                # Parse response
+                response_body = json.loads(response["body"].read())
+
+                # Extract embeddings from response
+                # Cohere Embed v4 returns embeddings in 'embeddings' field
+                batch_embeddings = response_body.get("embeddings", {}).get("float", [])
+
+                if not batch_embeddings:
+                    raise ValueError("No embeddings returned from Bedrock API")
+
+                all_embeddings.extend(batch_embeddings)
+
+            logger.info(
+                f"Generated {len(all_embeddings)} embeddings "
+                f"({settings.EMBEDDING_DIMENSION} dimensions each)"
+            )
+
+            return all_embeddings
+
+        except Exception as e:
+            logger.error(f"Failed to generate embeddings: {e}")
+            raise
+
+    def generate_query_embedding(self, query: str) -> list[float]:
+        """
+        Generate embedding for a search query.
+
+        Args:
+            query: Search query text
+
+        Returns:
+            Embedding vector (1024 dimensions)
+
+        Raises:
+            Exception: If the Bedrock API call fails
+        """
+        embeddings = self.generate_embeddings([query], input_type="search_query")
+        return embeddings[0] if embeddings else []
 
     def _format_conversation_history(
         self, conversation_history: list[Message], system_prompt: str
