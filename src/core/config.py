@@ -39,11 +39,18 @@ class Settings(BaseSettings):
     LLM_MODEL_ID: str = "anthropic.claude-sonnet-4"
     EMBEDDING_MODEL_ID: str = "cohere.embed-v4"
 
+    # LLM Configuration
+    LLM_TEMPERATURE: float = 0.7
+    LLM_TOP_P: float = 0.9
+    LLM_MAX_TOKENS: int = 2048
+    MAX_CONVERSATION_HISTORY: int = 10  # Number of recent conversation turns to include
+
     # RAG Configuration
     CHUNK_SIZE: int = 1000
     CHUNK_OVERLAP: int = 200
     TOP_K_CHUNKS: int = 10
     SEMANTIC_SEARCH_RATIO: float = 0.5  # 50% semantic, 50% BM25
+    ENABLE_RAG: bool = False  # Toggle RAG functionality
 
     # Cohere Embed v4 dimensions
     EMBEDDING_DIMENSION: int = 1024

@@ -2,13 +2,19 @@
 Chat service for handling conversations and messages.
 """
 
+import logging
 import uuid
 from datetime import datetime
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from src.core.bedrock_client import get_bedrock_client
+from src.core.config import settings
 from src.models import Conversation, Message, MessageRole
+from src.prompts.system_prompts import get_system_prompt
+
+logger = logging.getLogger(__name__)
 
 
 def get_or_create_conversation(
@@ -85,26 +91,49 @@ def save_message(
 
 def generate_response(user_message: str, conversation_history: list[Message]) -> str:
     """
-    Generate response to user message.
-
-    Currently implements simple echo for testing.
-    In production, replace with LLM call (Claude Sonnet 4 via Bedrock).
+    Generate response to user message using Claude Sonnet 4 via Bedrock.
 
     Args:
         user_message: User's message
         conversation_history: Previous messages in the conversation
 
     Returns:
-        str: Generated response
+        str: Generated response from Claude
+
+    Raises:
+        Exception: If the LLM call fails
     """
-    # Simple echo response for testing
-    response = f"Echo: {user_message}"
+    try:
+        # Limit conversation history to recent messages based on config
+        max_history = settings.MAX_CONVERSATION_HISTORY * 2  # *2 for user+assistant pairs
+        limited_history = conversation_history[-max_history:] if conversation_history else []
 
-    # Add conversation context info
-    if len(conversation_history) > 2:
-        response += f"\n\n(這是我們的第 {len(conversation_history) // 2 + 1} 輪對話)"
+        logger.info(
+            f"Generating response with {len(limited_history)} history messages "
+            f"(limit: {settings.MAX_CONVERSATION_HISTORY} turns)"
+        )
 
-    return response
+        # Get system prompt (RAG disabled for now)
+        system_prompt = get_system_prompt(use_rag=settings.ENABLE_RAG)
+
+        # Get Bedrock client and invoke Claude
+        bedrock_client = get_bedrock_client()
+        response = bedrock_client.invoke_claude(
+            user_message=user_message,
+            conversation_history=limited_history,
+            system_prompt=system_prompt,
+        )
+
+        logger.info("Response generated successfully")
+        return response
+
+    except Exception as e:
+        logger.error(f"Failed to generate response: {e}")
+        # Return a user-friendly error message
+        return (
+            "Sorry, I encountered an issue processing your request. "
+            "Please try again later or contact technical support."
+        )
 
 
 def get_conversation_history(

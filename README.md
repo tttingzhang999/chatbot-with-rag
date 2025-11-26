@@ -263,9 +263,9 @@ EMBEDDING_MODEL_ID=cohere.embed-v4
 - [x] 建立本地開發環境文件
 
 ### Phase 1: 環境準備與 AWS 熟悉
-- [ ] 設定 AWS Vault
-- [ ] 建立 AWS 帳號權限與 IAM 設定
-- [ ] 熟悉各 AWS 服務的基本操作
+- [x] 設定 AWS Vault
+- [x] 建立 AWS 帳號權限與 IAM 設定
+- [x] 熟悉各 AWS 服務的基本操作
 
 ### Phase 2: 文件處理 Pipeline
 - [ ] 設計 Chunking 策略
@@ -282,8 +282,8 @@ EMBEDDING_MODEL_ID=cohere.embed-v4
 - [ ] 使用 Test Set 驗證成效
 
 ### Phase 4: 對話系統
-- [ ] 整合 Claude Sonnet 4（目前使用 echo 回應）
-- [ ] 實作 Prompt Engineering
+- [x] 整合 Claude Sonnet 4（目前使用 echo 回應）
+- [x] 實作 Prompt Engineering
 - [ ] 實作 Context 管理優化
 - [ ] 測試對話品質
 
