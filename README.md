@@ -3,8 +3,53 @@
 一個具備 RAG（Retrieval-Augmented Generation）功能的 HR 智能客服系統。
 
 **專案時程**: 2025年11月 - 2025年12月底
-
+**目前版本**: v0.3.0
 **相關資源**: [Google Drive](https://drive.google.com/drive/u/1/folders/1KHnvLLubLUTg5nwfR3dZKgfWanQXw7UQ)
+
+## 快速導航
+
+### 🚀 快速開始
+
+```bash
+# 1. 複製環境變數範本
+cp .env.example .env
+
+# 2. 產生 SECRET_KEY 並設定 .env
+python scripts/generate_secret_key.py
+
+# 3. 初始化資料庫
+./scripts/init_db.sh
+
+# 4. 啟動後端（Terminal 1）
+./scripts/start_backend.sh
+
+# 5. 啟動前端（Terminal 2）
+./scripts/start_frontend.sh
+
+# 6. 存取應用
+# 前端: http://localhost:7860
+# API文件: http://localhost:8000/docs
+```
+
+### 📝 常用指令
+
+| 功能 | 指令 |
+|------|------|
+| 建立資料庫遷移 | `uv run alembic revision --autogenerate -m "說明"` |
+| 套用資料庫遷移 | `uv run alembic upgrade head` |
+| 程式碼檢查 | `ruff check .` |
+| 自動修復 | `ruff check --fix .` |
+| 格式化程式碼 | `ruff format .` |
+| 執行測試 | `pytest` |
+
+### 📚 重要文件
+
+- [本地開發指南](docs/local_development.md) - 詳細的本地開發說明
+- [環境變數設定](#環境變數設定) - 完整的環境變數說明
+- [開發指令](#開發指令) - 所有開發相關指令
+- [專案進度](#專案進度) - 目前開發進度
+
+---
 
 ## 目錄
 
@@ -14,6 +59,8 @@
 - [核心功能](#核心功能)
 - [技術棧](#技術棧)
 - [開發環境設定](#開發環境設定)
+- [環境變數設定](#環境變數設定)
+- [開發指令](#開發指令)
 - [RAG 基礎概念](#rag-基礎概念)
 - [專案進度](#專案進度)
 - [開發規範](#開發規範)
@@ -107,74 +154,134 @@ User Question → Embedding → Hybrid Search (Semantic + BM25) → Retrieved Ch
 
 ## 核心功能
 
-### 1. 文件處理（Document Processing）
+### 1. 使用者認證系統 ✅
 
-**目標**: 讓文件可以透過 BM25 (TFIDF) 與 Semantic Search 進行搜尋
+**已實作功能**:
+- JWT-based 認證機制
+- 使用者註冊與登入
+- 密碼安全儲存（bcrypt hashing）
+- Token 管理與驗證
 
-**處理流程**:
-1. 文件上傳至 S3
-2. 觸發 Lambda 進行前處理
-   - Chunking（文件分段）
-   - 生成 Embeddings（使用 Cohere Embed v4）
-   - 建立 BM25 索引資料
-3. 儲存至 Aurora PostgreSQL（使用 pgvector plugin）
+**技術實作**:
+- FastAPI 認證依賴注入
+- SQLAlchemy ORM
+- python-jose 與 passlib
+
+### 2. 多輪對話系統 ✅
+
+**已實作功能**:
+- 整合 AWS Bedrock Claude Sonnet 4
+- 多輪對話與上下文管理
+- 對話歷史儲存與檢索
+- HR 專屬 system prompts
+- 支援 RAG 增強回應
+
+**技術實作**:
+- LangChain 框架整合
+- 對話歷史資料庫儲存
+- Context window 管理（可設定歷史輪數）
+- 專業的 HR Chatbot 角色設定
+
+### 3. 文件處理系統 ⏳
+
+**已實作**:
+- 多檔案上傳支援（PDF、DOCX、TXT、DOC）
+- 基本文件解析（pypdf、python-docx）
+- 文件分段（chunking）策略
+- 文件資料庫儲存
+
+**待完成**:
+- Embedding 生成（Cohere Embed v4）
+- BM25 索引建立
+- S3 儲存整合（生產環境）
+- Lambda 觸發處理流程
 
 **技術要點**:
-- 所有前處理必須透過程式碼自動化完成
-- 使用 pgvector plugin 儲存向量資料
-- 密鑰管理透過 AWS Secrets Manager
+- 所有前處理透過程式碼自動化
+- PostgreSQL + pgvector 儲存向量資料
+- 配置化的 chunk size 與 overlap
 
-### 2. 文件檢索（Document Retrieval）
+### 4. 文件檢索系統（RAG）⏳
 
 **目標**: 建構 Hybrid Search 功能，找到最佳的 RAG Hyperparameters
 
-**搜尋策略**:
+**規劃實作**:
 - **Semantic Search**: 使用向量相似度（Cosine Similarity）
 - **BM25**: 基於 TFIDF 的關鍵字搜尋
-- **Hybrid Search**: 結合兩種方法（例如：10 個 chunks 中，5 個來自 Semantic Search，5 個來自 BM25）
+- **Hybrid Search**: 結合兩種方法（可調整比例）
 
-**Hyperparameters 調整**:
-- Chunk size（分段大小）
-- Overlap size（重疊大小）
-- Retrieved chunks 數量
-- Semantic vs BM25 的比例
+**Hyperparameters 調整方向**:
+- Chunk size（預設 512 字元）
+- Overlap size（預設 128 字元）
+- Top-K chunks（預設 10）
+- Semantic vs BM25 比例（預設 0.5）
+- Relevance threshold（預設 0.3）
 
-### 3. 多輪對話（Multi-turn Conversation）
+**目前狀態**:
+- ✅ 建立基礎架構（retrieval_service.py）
+- ⏳ 待整合 embedding 模型
+- ⏳ 待實作搜尋演算法
 
-**目標**: 建構可以多輪對話的 Chatbot，能繼承上下文內容
+### 5. Gradio 前端界面 ✅
 
-**技術實作**:
-- 使用 Claude Sonnet 4 作為 LLM
-- System Prompt 設計
-- User Prompt 設計
-- Context Engineering（對話歷史管理）
+**已實作功能**:
+- 現代化登入界面（含註冊/登入切換）
+- 即時對話界面
+- 對話歷史側邊欄
+- 多檔案上傳功能
+- 錯誤處理與使用者回饋
+- 自訂品牌樣式（bot avatar）
 
-### 4. 前端界面（Frontend）
-
-**技術選擇**: Gradio
-
-**功能需求**:
-- 登入畫面
-- 對話界面
-- 文件上傳功能（待確認）
+**技術特點**:
+- RESTful API 整合
+- 非同步請求處理
+- Session 管理
+- 響應式設計
 
 ## 技術棧
 
-### 核心框架
-- **RAG 框架**: LangChain / LlamaIndex（待選擇）
-- **前端**: Gradio
-- **部署**: Docker + AWS Lambda (Container Image)
+### 後端框架
+- **Web 框架**: FastAPI (高效能 async Python web framework)
+- **ASGI 伺服器**: Uvicorn
+- **ORM**: SQLAlchemy 2.0
+- **資料庫遷移**: Alembic
+- **RAG 框架**: LangChain (已整合)
+- **驗證與授權**: JWT (python-jose) + bcrypt (passlib)
 
-### AI/ML
-- **LLM**: Claude Sonnet 4 (Amazon Bedrock)
-- **Embedding**: Cohere Embed v4 (Amazon Bedrock)
-- **向量資料庫**: PostgreSQL + pgvector
+### 前端
+- **UI 框架**: Gradio 4.x
+- **API 通訊**: HTTP/REST
+- **樣式**: 自訂 CSS + Gradio Blocks
+
+### AI/ML 服務
+- **LLM**: Claude 3.5 Sonnet (Amazon Bedrock)
+  - Model ID: `anthropic.claude-3-5-sonnet-20240620-v1:0`
+- **Embedding**: Cohere Embed v4 (Amazon Bedrock) - 待整合
+  - Model ID: `cohere.embed-v4:0`
+  - 維度: 1536
+
+### 資料庫
+- **本地開發**: PostgreSQL 14+
+- **生產環境**: Aurora PostgreSQL Serverless
+- **向量擴充**: pgvector
+- **資料處理**: pypdf, python-docx
+
+### AWS 服務
+- **運算**: Lambda (Container Image from ECR)
+- **儲存**: S3 (documents), Aurora PostgreSQL (vectors + metadata)
+- **AI/ML**: Bedrock (Claude, Cohere)
+- **網路**: API Gateway, Route 53, Certificate Manager
+- **安全**: Secrets Manager, IAM
 
 ### 開發工具
-- **套件管理**: uv
-- **程式碼品質**: ruff (linting)
-- **Git Hooks**: pre-commit
-- **AWS CLI**: AWS Vault
+- **套件管理**: uv (快速 Python 套件管理器)
+- **程式碼品質**:
+  - Linter: ruff
+  - Formatter: ruff format
+  - Git hooks: pre-commit
+- **測試**: pytest (含 pytest-asyncio, pytest-cov)
+- **AWS 認證**: aws-vault (本地開發)
+- **容器化**: Docker + ECR
 
 ## 開發環境設定
 
@@ -207,23 +314,110 @@ aws-vault exec <profile-name> -- aws s3 ls
 
 ### 環境變數設定
 
-建立 `.env` 檔案（請勿提交至版本控制）：
+複製 `.env.example` 並重新命名為 `.env`（請勿提交至版本控制）：
 
 ```bash
-# AWS Configuration
-AWS_REGION=us-east-1
-AWS_PROFILE=<your-profile>
-
-# Database
-DB_SECRET_NAME=<secret-manager-name>
-
-# S3
-DOCUMENT_BUCKET=<s3-bucket-name>
-
-# Bedrock Models
-LLM_MODEL_ID=anthropic.claude-sonnet-4
-EMBEDDING_MODEL_ID=cohere.embed-v4
+cp .env.example .env
 ```
+
+#### 必要環境變數
+
+以下為**必須設定**的環境變數：
+
+| 變數名稱 | 說明 | 範例值 | 如何產生 |
+|---------|------|--------|---------|
+| `SECRET_KEY` | JWT token 簽署金鑰 | `a1b2c3d4e5f6...` | `openssl rand -hex 32` |
+| `DATABASE_URL` | PostgreSQL 資料庫連線字串 | `postgresql://postgres:password@localhost:5432/hr_chatbot` | 參考 `scripts/init_db.sh` |
+
+#### AWS 相關環境變數（需使用 Bedrock 時）
+
+| 變數名稱 | 說明 | 預設值 | 備註 |
+|---------|------|--------|------|
+| `AWS_REGION` | AWS 服務區域 | `us-east-1` | 使用 Bedrock 時必填 |
+| `AWS_PROFILE` | AWS 設定檔名稱 | - | 本地開發用 aws-vault 時需要 |
+| `DB_SECRET_NAME` | AWS Secrets Manager 金鑰名稱 | - | 僅生產環境需要 |
+| `DOCUMENT_BUCKET` | S3 儲存桶名稱 | - | 僅生產環境需要 |
+
+#### 可選環境變數（有預設值）
+
+<details>
+<summary>點擊展開查看所有可選環境變數</summary>
+
+**應用程式設定**
+| 變數名稱 | 說明 | 預設值 |
+|---------|------|--------|
+| `APP_NAME` | 應用程式名稱 | `HR Chatbot` |
+| `DEBUG` | 除錯模式 | `false` |
+
+**伺服器設定**
+| 變數名稱 | 說明 | 預設值 |
+|---------|------|--------|
+| `UVICORN_HOST` | FastAPI 伺服器主機 | `0.0.0.0` |
+| `UVICORN_PORT` | FastAPI 伺服器埠號 | `8000` |
+| `UVICORN_RELOAD` | 自動重新載入 | `false` |
+| `GRADIO_HOST` | Gradio 前端主機 | `0.0.0.0` |
+| `GRADIO_PORT` | Gradio 前端埠號 | `7860` |
+
+**API 設定**
+| 變數名稱 | 說明 | 預設值 |
+|---------|------|--------|
+| `API_TITLE` | API 標題 | `HR Chatbot API` |
+| `API_DESCRIPTION` | API 描述 | `API for HR Chatbot with RAG capabilities` |
+| `API_VERSION` | API 版本 | `0.3.0` |
+| `CORS_ORIGINS` | CORS 允許來源 | `*` |
+
+**檔案上傳設定**
+| 變數名稱 | 說明 | 預設值 |
+|---------|------|--------|
+| `UPLOAD_DIR` | 本地上傳目錄 | `uploads` |
+| `SUPPORTED_FILE_TYPES` | 支援的檔案類型 | `pdf,txt,docx,doc` |
+
+**前端設定**
+| 變數名稱 | 說明 | 預設值 |
+|---------|------|--------|
+| `BACKEND_API_URL` | 後端 API 網址 | `http://localhost:8000` |
+| `ASSETS_DIR` | 前端資源目錄 | `assets` |
+| `BOT_AVATAR_FILENAME` | 機器人頭像檔名 | `bot_avatar.png` |
+
+**HTTP 設定**
+| 變數名稱 | 說明 | 預設值 |
+|---------|------|--------|
+| `HTTP_TIMEOUT_DEFAULT` | 預設 HTTP 超時（秒） | `30` |
+| `HTTP_TIMEOUT_UPLOAD` | 上傳超時（秒） | `30` |
+| `HTTP_TIMEOUT_SHORT` | 快速請求超時（秒） | `30` |
+
+**資料庫查詢限制**
+| 變數名稱 | 說明 | 預設值 |
+|---------|------|--------|
+| `CONVERSATION_HISTORY_LIMIT` | 對話歷史最大筆數 | `50` |
+| `USER_CONVERSATIONS_LIMIT` | 使用者對話列表最大筆數 | `20` |
+
+**Bedrock 模型設定**
+| 變數名稱 | 說明 | 預設值 |
+|---------|------|--------|
+| `LLM_MODEL_ID` | LLM 模型 ID | `anthropic.claude-3-5-sonnet-20240620-v1:0` |
+| `EMBEDDING_MODEL_ID` | Embedding 模型 ID | `cohere.embed-v4:0` |
+
+**LLM 參數**
+| 變數名稱 | 說明 | 預設值 |
+|---------|------|--------|
+| `LLM_TEMPERATURE` | 採樣溫度（0.0-1.0） | `0.7` |
+| `LLM_TOP_P` | Nucleus 採樣參數 | `0.9` |
+| `LLM_MAX_TOKENS` | 最大回應 tokens 數 | `2048` |
+| `MAX_CONVERSATION_HISTORY` | 包含在上下文的對話輪數 | `10` |
+
+**RAG 設定**
+| 變數名稱 | 說明 | 預設值 |
+|---------|------|--------|
+| `ENABLE_RAG` | 啟用 RAG 功能 | `false` |
+| `CHUNK_SIZE` | 文件分段大小（字元） | `512` |
+| `CHUNK_OVERLAP` | 分段重疊大小（字元） | `128` |
+| `TOP_K_CHUNKS` | 檢索的文件片段數量 | `10` |
+| `SEMANTIC_SEARCH_RATIO` | 語義搜尋比例（0.0-1.0） | `0.5` |
+| `RELEVANCE_THRESHOLD` | 相關度閾值（0.0-1.0） | `0.3` |
+| `EMBEDDING_DIMENSION` | Embedding 向量維度 | `1536` |
+
+</details>
 
 ## RAG 基礎概念
 
@@ -267,33 +461,41 @@ EMBEDDING_MODEL_ID=cohere.embed-v4
 - [x] 建立 AWS 帳號權限與 IAM 設定
 - [x] 熟悉各 AWS 服務的基本操作
 
-### Phase 2: 文件處理 Pipeline
-- [ ] 設計 Chunking 策略
-- [ ] 實作 S3 → Lambda 觸發機制
+### Phase 2: 文件處理 Pipeline ⏳（進行中）
+- [x] 設計 Chunking 策略（已實作基本 chunking）
+- [x] 實作文件上傳功能（支援 PDF、DOCX、TXT，含多檔上傳）
+- [x] 建立 PostgreSQL 資料庫與 pgvector（已完成 schema 設計）
 - [ ] 整合 Cohere Embed v4 進行 Embedding
-- [ ] 建立 Aurora PostgreSQL 資料庫與 pgvector
+- [ ] 實作 S3 → Lambda 觸發機制（生產環境）
 - [ ] 實作 BM25 索引建立
 
-### Phase 3: 檢索系統
+### Phase 3: 檢索系統（待開始）
+- [x] 建立 RAG 基礎架構（retrieval_service.py）
+- [ ] 整合 Embedding 模型
 - [ ] 實作 Semantic Search
 - [ ] 實作 BM25 搜尋
 - [ ] 建立 Hybrid Search 機制
 - [ ] 使用 Validation Set 進行 Hyperparameter 調整
 - [ ] 使用 Test Set 驗證成效
 
-### Phase 4: 對話系統
-- [x] 整合 Claude Sonnet 4（目前使用 echo 回應）
-- [x] 實作 Prompt Engineering
-- [ ] 實作 Context 管理優化
-- [ ] 測試對話品質
+### Phase 4: 對話系統 ✅（已完成基本功能）
+- [x] 整合 Claude Sonnet 4（透過 AWS Bedrock）
+- [x] 實作 Prompt Engineering（HR 專屬 system prompts）
+- [x] 實作多輪對話與上下文管理
+- [x] 整合 RAG 與 LLM（chat_service.py）
+- [ ] 優化 Context 視窗管理（處理長對話）
+- [ ] 進階對話品質測試與調優
 
-### Phase 5: 前端與部署
-- [x] 開發 Gradio 前端界面（本地版）
-- [x] 實作登入功能（簡易版）
+### Phase 5: 前端與部署 ⏳（本地開發完成）
+- [x] 開發 Gradio 前端界面
+- [x] 實作使用者認證與登入
+- [x] 實作對話歷史管理
+- [x] 實作多檔案上傳功能
+- [x] 整合前後端 API
 - [ ] Docker 容器化
 - [ ] 部署至 AWS（Lambda + API Gateway）
-- [ ] 設定 SSL 與自訂網域
-- [ ] 整體測試
+- [ ] 設定 SSL 與自訂網域（Route 53 + ACM）
+- [ ] 完整的端到端測試
 
 ### Phase 6: 成果整理
 - [ ] 撰寫技術報告
@@ -346,43 +548,114 @@ chore: 雜項（依賴更新等）
 3. 使用 Serverless 服務（Lambda, Aurora Serverless）以降低成本
 4. 注意不要影響既有資源（特別是 Route 53）
 
-## 部署指南
+## 開發指令
 
-### 本地開發 (推薦開始方式)
+### 快速開始（本地開發）
 
-快速啟動本地開發環境（不需 AWS 服務）：
+適合初次使用或不需要 AWS Bedrock 功能的開發：
 
 ```bash
-# 1. 初始化資料庫
+# 1. 設定環境變數
+cp .env.example .env
+# 編輯 .env 檔案，設定 SECRET_KEY 和 DATABASE_URL
+
+# 2. 產生 SECRET_KEY（複製輸出結果到 .env）
+python scripts/generate_secret_key.py
+
+# 3. 初始化資料庫
 ./scripts/init_db.sh
 
-# 2. 啟動後端 (Terminal 1)
+# 4. 啟動後端 API (Terminal 1)
 ./scripts/start_backend.sh
+# 或: python -m uvicorn src.main:app --reload
 
-# 3. 啟動前端 (Terminal 2)
+# 5. 啟動前端界面 (Terminal 2)
 ./scripts/start_frontend.sh
+# 或: python src/app.py
 
-# 4. 測試 API
+# 6. 測試 API（選用）
 python scripts/test_api.py
 ```
 
-存取應用程式：
-- 前端界面: http://localhost:7860
-- API 文件: http://localhost:8000/docs
+**存取應用程式**：
+- 🌐 前端界面: http://localhost:7860
+- 📚 API 文件: http://localhost:8000/docs
+- 🔧 OpenAPI JSON: http://localhost:8000/openapi.json
 
 詳細說明請參考 [本地開發指南](docs/local_development.md)
 
-### 生產環境測試（含 AWS 服務）
+### 使用 AWS Bedrock（進階）
+
+需要使用 Claude Sonnet 4 或 Cohere Embed v4 時：
 
 ```bash
-# 執行文件處理測試
-python -m src.document_processor
+# 1. 設定 AWS Vault
+aws-vault add <your-profile-name>
 
-# 執行檢索測試
-python -m src.retrieval
+# 2. 在 .env 中設定 AWS_PROFILE 和 AWS_REGION
+# AWS_PROFILE=<your-profile-name>
+# AWS_REGION=us-east-1
+
+# 3. 使用 AWS Vault 啟動後端
+./scripts/start_backend_with_aws.sh
+# 或: aws-vault exec <profile> -- python -m uvicorn src.main:app --reload
+
+# 4. 測試文件處理（有上傳文件後）
+python scripts/test_basic_processing.py
+
+# 5. 測試 RAG 功能（有上傳文件後）
+python scripts/test_rag.py
 ```
 
-### Docker 建置
+### 資料庫遷移（Database Migrations）
+
+使用 Alembic 管理資料庫結構變更：
+
+```bash
+# 查看目前資料庫版本
+uv run alembic current
+
+# 查看遷移歷史
+uv run alembic history
+
+# 建立新的遷移（自動偵測模型變更）
+uv run alembic revision --autogenerate -m "描述變更內容"
+
+# 套用所有待執行的遷移
+uv run alembic upgrade head
+
+# 回退到上一個版本
+uv run alembic downgrade -1
+
+# 回退到特定版本
+uv run alembic downgrade <revision_id>
+```
+
+**重要提醒**：
+- ✅ 執行前務必先檢查自動產生的遷移檔案
+- ✅ 在本地環境測試過遷移再套用到生產環境
+- ✅ 遷移訊息使用有意義的描述（遵循 Conventional Commits）
+
+### 程式碼品質檢查
+
+```bash
+# 執行 linting 檢查
+ruff check .
+
+# 自動修復 linting 問題
+ruff check --fix .
+
+# 格式化程式碼
+ruff format .
+
+# 執行所有 pre-commit hooks
+pre-commit run --all-files
+
+# 執行測試（如有）
+pytest
+```
+
+### Docker 建置與部署
 
 ```bash
 # 建置 Docker 映像
@@ -391,13 +664,14 @@ docker build -t hr-chatbot:latest .
 # 本地測試
 docker run -p 8080:8080 hr-chatbot:latest
 
-# 推送至 ECR
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <account-id>.dkr.ecr.us-east-1.amazonaws.com
+# 推送至 ECR（生產環境）
+aws ecr get-login-password --region us-east-1 | \
+  docker login --username AWS --password-stdin <account-id>.dkr.ecr.us-east-1.amazonaws.com
 docker tag hr-chatbot:latest <account-id>.dkr.ecr.us-east-1.amazonaws.com/hr-chatbot:latest
 docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/hr-chatbot:latest
 ```
 
-### AWS 部署
+### AWS 雲端部署
 
 詳細部署步驟請參考 [部署文件](docs/deployment.md)（待建立）
 
@@ -430,9 +704,4 @@ Internal Project - All Rights Reserved
 
 ## 聯絡方式
 
-專案負責人: Ting Zhang
-Mentor: Micheal
-
----
-
-**最後更新**: 2025-11-25
+專案負責人: Ting Zhang [tingzhang@going.cloud](mailto:tingzhang@going.cloud)
