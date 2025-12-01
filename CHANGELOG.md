@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] 2025-12-01 - Frontend Refactor, Session Management, AWS Secrets
+
+### Added
+
+- **Embedding dimension migration**: Database `document_chunks.embedding` column was migrated from dimension 1024 to 1536 to support improved embedding models. See Alembic migration `9ff57d084d8a_change_embedding_dimension_from_1024_to_.py`. *(All existing chunk vectors must be re-embedded to avoid incompatible shape errors.)*
+- **Support for more document types in uploads**: Backend and frontend now allow PDF, DOCX, and TXT document upload. Dependencies `pypdf` and `python-docx` added to project.
+- **New local-only testing scripts**:
+  - `scripts/test_basic_processing.py`: Tests document text extraction, chunking, and DB integration without AWS (fast local dry-run).
+  - Enhanced `scripts/test_api.py` to allow custom backend URL via `$BACKEND_API_URL`.
+- **Backend/Frontend dev scripts now auto-load environment variables**: All `scripts/start_*.sh` scripts will load config from `.env`, improving DX and reducing config drift between dev/prod.
+- **Frontend hot-reload dev script**: Run `./scripts/start_frontend_dev.sh` for Gradio instant-reload in local dev.
+- **Updated `.env.example`** with correct embedding dims, model IDs, and all optional config variables documented for both backend and frontend.
+
+### Changed
+
+- **Embedding model ID and dimension updated** in `.env.example` for newest (Cohere v4:0 and Anthropic Claude 3.5) models and default dimensions.
+- **Frontend status update refactor**: All Gradio UI status returns now use a single consistent `gr.update(value=..., visible=True)` pattern. Cleans up all validation and success/error prompts for login, registration, and logout for fuller accessibility and maintainability.
+- **Chatbot history now uses Gradio's "messages" format** rather than Python tuples, for native multi-turn thread rendering and streaming support. All history and message construction logic updated for this format in both code and frontend.
+- **Frontend/server startup scripts improved**: All local scripts now display detailed status, port info, and helpful reminders for running backend/frontend together, with clear prompts and colorized warnings.
+- **Gradio version in requirements bumped, dependencies for `pypdf` and `python-docx` added**.
+
+### Fixed
+
+- **.gitignore improved** to exclude all `.pdf` files from repo.
+- **Environment loading order fixed** in all scripts (`.env` always sourced before activating venv or running app).
+- **Backend health/test scripts now robust to environment overrides**.
+
+### Migration Notes
+
+- Alembic migration required: `alembic upgrade head` to migrate `document_chunks.embedding` to 1536 dimensions.
+- Re-embed all existing chunk vectors or clear your DB for new embeddings if upgrading from 0.5.0 or earlier.
+
+### Developer Info
+
+- All configs are now available and documented in `.env.example`.
+- Hot-reload your Gradio frontend with `./scripts/start_frontend_dev.sh`
+- All AWS profile/region/env config for scripting is centralized—run backend/frontend concurrently with proper environment.
+- Code, linted/autoformatted with `ruff`.
+
 ## [0.5.0] - 2025-11-30 - Frontend Refactor, Session Management, AWS Secrets
 
 #### Added
