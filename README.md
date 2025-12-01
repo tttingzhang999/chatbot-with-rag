@@ -1,10 +1,6 @@
 # HR Chatbot with RAG
 
-一個具備 RAG（Retrieval-Augmented Generation）功能的 HR 智能客服系統。
-
-**專案時程**: 2025年11月 - 2025年12月底
-**目前版本**: v0.3.0
-**相關資源**: [Google Drive](https://drive.google.com/drive/u/1/folders/1KHnvLLubLUTg5nwfR3dZKgfWanQXw7UQ)
+一個具備 RAG（Retrieval-Augmented Generation）功能的智能客服系統。
 
 ## 快速導航
 
@@ -419,135 +415,6 @@ cp .env.example .env
 
 </details>
 
-## RAG 基礎概念
-
-### 核心技術
-
-- **Documents → Indexing** - 文件索引化流程
-- **Embeddings** - 將文字轉換為向量表示
-- **Chunking（切片）** - 文件分段策略
-  - Chunk Size - 每段文字的大小
-  - Overlapping chunks - 段落間的重疊部分
-- **Semantic Search** - 語義搜尋
-  - Cosine Similarity - 計算向量相似度的方法
-- **Hybrid Search** - 結合多種搜尋方法
-  - Semantic Search + BM25
-- **Self-Reflective RAG**
-  - Graded Reranking - 分級重新排序
-  - Adaptive RAG - 自適應 RAG
-
-### 技術名詞
-
-- **BM25** - Best Matching 25，資訊檢索的排序函數
-- **TFIDF** - Term Frequency-Inverse Document Frequency
-- **pgvector** - PostgreSQL 的向量資料庫擴充
-- **Cosine Similarity** - 餘弦相似度，用於計算向量相似性
-
-## 專案進度
-
-### Phase 0: 基礎架構 ✅ (已完成)
-- [x] 設定本地開發環境（uv, pre-commit, ruff）
-- [x] 設計資料庫 schema (PostgreSQL + pgvector)
-- [x] 建立 SQLAlchemy models
-- [x] 配置 Alembic 資料庫遷移
-- [x] 建立 FastAPI 後端架構
-- [x] 開發 Gradio 前端界面
-- [x] 實作基本登入功能
-- [x] 實作多輪對話與歷史記錄
-- [x] 建立本地開發環境文件
-
-### Phase 1: 環境準備與 AWS 熟悉
-- [x] 設定 AWS Vault
-- [x] 建立 AWS 帳號權限與 IAM 設定
-- [x] 熟悉各 AWS 服務的基本操作
-
-### Phase 2: 文件處理 Pipeline ⏳（進行中）
-- [x] 設計 Chunking 策略（已實作基本 chunking）
-- [x] 實作文件上傳功能（支援 PDF、DOCX、TXT，含多檔上傳）
-- [x] 建立 PostgreSQL 資料庫與 pgvector（已完成 schema 設計）
-- [ ] 整合 Cohere Embed v4 進行 Embedding
-- [ ] 實作 S3 → Lambda 觸發機制（生產環境）
-- [ ] 實作 BM25 索引建立
-
-### Phase 3: 檢索系統（待開始）
-- [x] 建立 RAG 基礎架構（retrieval_service.py）
-- [ ] 整合 Embedding 模型
-- [ ] 實作 Semantic Search
-- [ ] 實作 BM25 搜尋
-- [ ] 建立 Hybrid Search 機制
-- [ ] 使用 Validation Set 進行 Hyperparameter 調整
-- [ ] 使用 Test Set 驗證成效
-
-### Phase 4: 對話系統 ✅（已完成基本功能）
-- [x] 整合 Claude Sonnet 4（透過 AWS Bedrock）
-- [x] 實作 Prompt Engineering（HR 專屬 system prompts）
-- [x] 實作多輪對話與上下文管理
-- [x] 整合 RAG 與 LLM（chat_service.py）
-- [ ] 優化 Context 視窗管理（處理長對話）
-- [ ] 進階對話品質測試與調優
-
-### Phase 5: 前端與部署 ⏳（本地開發完成）
-- [x] 開發 Gradio 前端界面
-- [x] 實作使用者認證與登入
-- [x] 實作對話歷史管理
-- [x] 實作多檔案上傳功能
-- [x] 整合前後端 API
-- [ ] Docker 容器化
-- [ ] 部署至 AWS（Lambda + API Gateway）
-- [ ] 設定 SSL 與自訂網域（Route 53 + ACM）
-- [ ] 完整的端到端測試
-
-### Phase 6: 成果整理
-- [ ] 撰寫技術報告
-- [ ] 繪製架構圖與流程圖
-- [ ] 整理實驗數據與分析
-- [ ] 準備成果分享
-
-## 開發規範
-
-### 程式碼品質
-
-- 使用 **ruff** 進行 linting
-- 使用 **pre-commit** hooks 確保程式碼品質
-- 遵循 PEP 8 編碼規範
-- 適當的註解與文件字串
-
-### Git 工作流程
-
-```bash
-# 1. 建立功能分支
-git checkout -b feature/your-feature-name
-
-# 2. 開發並提交
-git add .
-git commit -m "feat: add document processing pipeline"
-
-# 3. 推送至遠端
-git push origin feature/your-feature-name
-
-# 4. 建立 Merge Request
-```
-
-### 提交訊息規範
-
-使用 Conventional Commits 格式：
-
-```
-feat: 新功能
-fix: 錯誤修復
-docs: 文件更新
-refactor: 重構
-test: 測試相關
-chore: 雜項（依賴更新等）
-```
-
-### 成本控制原則
-
-1. 使用 AWS 服務前評估用量與費用
-2. 優先在本地環境測試
-3. 使用 Serverless 服務（Lambda, Aurora Serverless）以降低成本
-4. 注意不要影響既有資源（特別是 Route 53）
-
 ## 開發指令
 
 ### 快速開始（本地開發）
@@ -582,11 +449,7 @@ python scripts/test_api.py
 - 📚 API 文件: http://localhost:8000/docs
 - 🔧 OpenAPI JSON: http://localhost:8000/openapi.json
 
-詳細說明請參考 [本地開發指南](docs/local_development.md)
-
-### 使用 AWS Bedrock（進階）
-
-需要使用 Claude Sonnet 4 或 Cohere Embed v4 時：
+### 使用 AWS Bedrock
 
 ```bash
 # 1. 設定 AWS Vault
@@ -609,8 +472,6 @@ python scripts/test_rag.py
 
 ### 資料庫遷移（Database Migrations）
 
-使用 Alembic 管理資料庫結構變更：
-
 ```bash
 # 查看目前資料庫版本
 uv run alembic current
@@ -631,11 +492,6 @@ uv run alembic downgrade -1
 uv run alembic downgrade <revision_id>
 ```
 
-**重要提醒**：
-- ✅ 執行前務必先檢查自動產生的遷移檔案
-- ✅ 在本地環境測試過遷移再套用到生產環境
-- ✅ 遷移訊息使用有意義的描述（遵循 Conventional Commits）
-
 ### 程式碼品質檢查
 
 ```bash
@@ -651,44 +507,13 @@ ruff format .
 # 執行所有 pre-commit hooks
 pre-commit run --all-files
 
-# 執行測試（如有）
+# 執行測試
 pytest
-```
-
-### Docker 建置與部署
-
-```bash
-# 建置 Docker 映像
-docker build -t hr-chatbot:latest .
-
-# 本地測試
-docker run -p 8080:8080 hr-chatbot:latest
-
-# 推送至 ECR（生產環境）
-aws ecr get-login-password --region us-east-1 | \
-  docker login --username AWS --password-stdin <account-id>.dkr.ecr.us-east-1.amazonaws.com
-docker tag hr-chatbot:latest <account-id>.dkr.ecr.us-east-1.amazonaws.com/hr-chatbot:latest
-docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/hr-chatbot:latest
 ```
 
 ### AWS 雲端部署
 
 詳細部署步驟請參考 [部署文件](docs/deployment.md)（待建立）
-
-## 資料集
-
-- **Validation Set**: 用來調整 Hyperparameters
-- **Test Set**: 用於最終評分與成效驗證
-
-資料集內容與格式請參考 `data/README.md`（待建立）
-
-## 開發建議
-
-1. ✅ **尋求協助**: 有問題隨時找主管、Mentor、其他同事
-2. ✅ **善用工具**: 可以使用任何 AI 開發工具輔助
-3. ✅ **先本地後雲端**: 先把各個部件在 local 跑通，再上 AWS
-4. ⚠️ **成本意識**: 使用 AWS 服務前注意預估用量與費用
-5. ⚠️ **資源隔離**: 切勿影響既有其他人的相關 Resource（特別是 Route 53）
 
 ## 參考資源
 
@@ -697,10 +522,6 @@ docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/hr-chatbot:latest
 - [Amazon Bedrock 開發者指南](https://docs.aws.amazon.com/bedrock/)
 - [pgvector GitHub](https://github.com/pgvector/pgvector)
 - [RAG 最佳實踐](https://www.pinecone.io/learn/retrieval-augmented-generation/)
-
-## License
-
-Internal Project - All Rights Reserved
 
 ## 聯絡方式
 
