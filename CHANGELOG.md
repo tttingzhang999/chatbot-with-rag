@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2025-11-30 - Frontend Refactor, Session Management, AWS Secrets
+
+#### Added
+
+- **Frontend structure refactored**: Reorganized Gradio components into logical modules (`register_tab`, `login_tab`, `chat_tab`, and `document_tab`) for easier maintenance.
+- **Session management introduced**: Added backend-integrated session capability to support authenticated user flows and persistent conversation context.
+- **Dedicated registration and login tabs**: UI components for registration/login now have their own modules with enhanced validation (e.g., password strength, confirm password, required fields).
+- **Enhanced API client** for streamlined backend communication: uniform request/response handling for user registration, login, and document management.
+- **AWS Secrets Manager integration**: App configuration (e.g., sensitive credentials, endpoints) now retrieved securely via AWS Secrets Manager; see `src/core/secrets.py`.
+- **Improved configuration management**: All secret/config access is centralized; environment and secrets are loaded at startup.
+- **Updated documentation**: Details on new frontend structure and AWS Secrets usage.
+
+#### Changed
+
+- **Refactored frontend logic** for improved testability, separation of concerns, and more robust UI feedback.
+- **API error messages** and status prompts unified and translated to clear, user-friendly Chinese.
+- **Enhanced Docker setup**: Environment variable management cleaned up for dev/prod, with specific notes on how lambdas/frontend communicate.
+
+#### Fixed
+
+- **Login/registration race conditions**: Sessions now properly isolated; UI responses for success/error made clearer.
+- **Various UI bugs**: Ensured all frontend tabs are reactive to session state and provide context-aware controls.
+
+#### Notes
+
+- Developer tip: See new top-level directory structure and module organization under `src/frontend/tabs`.
+- Security: All sensitive config and credentials (not stored in code) should be injected via AWS Secrets or environment.
+- All code passes `ruff check` and is formatted with `ruff format`.
+
 ## [0.4.2] - 2025-11-29 - Multi-file Upload Support
 
 #### Added
