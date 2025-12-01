@@ -2,12 +2,17 @@
 Application configuration using Pydantic settings.
 
 All configuration values can be set via environment variables in .env file.
+Secrets can optionally be loaded from AWS Secrets Manager.
 """
 
+import logging
+import os
 from pathlib import Path
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -37,8 +42,12 @@ class Settings(BaseSettings):
 
     # ========== Security ==========
     SECRET_KEY: str = Field(
-        ...,
-        description="Required: Secret key for JWT token signing. Generate with: openssl rand -hex 32",
+        default="",
+        description="Secret key for JWT token signing. Can be loaded from Secrets Manager via APP_SECRET_NAME",
+    )
+    APP_SECRET_NAME: str = Field(
+        default="",
+        description="Optional: AWS Secrets Manager secret name for app secrets (secret_key, algorithm)",
     )
     ALGORITHM: str = Field(
         default="HS256",
@@ -106,11 +115,11 @@ class Settings(BaseSettings):
     # ========== Database ==========
     DB_SECRET_NAME: str = Field(
         default="",
-        description="Optional: AWS Secrets Manager secret name for database credentials",
+        description="Optional: AWS Secrets Manager secret name for database credentials. If set, overrides DATABASE_URL",
     )
     DATABASE_URL: str = Field(
-        ...,
-        description="Required: PostgreSQL connection string (postgresql://user:password@host:port/dbname)",
+        default="",
+        description="PostgreSQL connection string. Can be loaded from Secrets Manager via DB_SECRET_NAME",
     )
     CONVERSATION_HISTORY_LIMIT: int = Field(
         default=50,
@@ -276,4 +285,65 @@ class Settings(BaseSettings):
         return v
 
 
-settings = Settings()
+def _load_settings() -> Settings:
+    """
+    Load settings with optional Secrets Manager integration.
+
+    If DB_SECRET_NAME or APP_SECRET_NAME are set, they will be loaded from
+    AWS Secrets Manager and override the corresponding environment variables.
+
+    Returns:
+        Settings instance with all configuration loaded
+    """
+    # First, create settings from environment variables
+    base_settings = Settings()
+
+    # Check if we need to load from Secrets Manager
+    use_secrets_manager = bool(base_settings.DB_SECRET_NAME or base_settings.APP_SECRET_NAME)
+
+    if not use_secrets_manager:
+        logger.info("Using configuration from environment variables only")
+        return base_settings
+
+    logger.info("Loading secrets from AWS Secrets Manager...")
+
+    try:
+        from src.core.secrets import get_secrets_manager
+
+        sm = get_secrets_manager(region_name=base_settings.AWS_REGION)
+
+        # Load database credentials if DB_SECRET_NAME is set
+        if base_settings.DB_SECRET_NAME:
+            logger.info(f"Loading database URL from secret: {base_settings.DB_SECRET_NAME}")
+            database_url = sm.build_database_url(base_settings.DB_SECRET_NAME)
+            # Override DATABASE_URL in environment
+            os.environ["DATABASE_URL"] = database_url
+
+        # Load app secrets if APP_SECRET_NAME is set
+        if base_settings.APP_SECRET_NAME:
+            logger.info(f"Loading app secrets from: {base_settings.APP_SECRET_NAME}")
+            app_secrets = sm.get_app_secrets(base_settings.APP_SECRET_NAME)
+
+            # Override SECRET_KEY in environment
+            if "secret_key" in app_secrets:
+                os.environ["SECRET_KEY"] = app_secrets["secret_key"]
+
+            # Optionally override ALGORITHM if provided
+            if "algorithm" in app_secrets:
+                os.environ["ALGORITHM"] = app_secrets["algorithm"]
+
+        # Recreate settings with updated environment variables
+        logger.info("Secrets loaded successfully from AWS Secrets Manager")
+        return Settings()
+
+    except ImportError as e:
+        logger.error(f"Failed to import secrets module: {e}")
+        logger.warning("Falling back to environment variables only")
+        return base_settings
+    except Exception as e:
+        logger.error(f"Failed to load secrets from Secrets Manager: {e}")
+        logger.warning("Falling back to environment variables only")
+        return base_settings
+
+
+settings = _load_settings()
