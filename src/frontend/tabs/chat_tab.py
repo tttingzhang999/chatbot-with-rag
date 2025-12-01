@@ -19,7 +19,7 @@ def send_message(
 
     Args:
         message: User message
-        chat_history: Current chat history
+        chat_history: Current chat history in messages format
 
     Returns:
         tuple: (updated chat history, empty message box, status message, status visibility update)
@@ -28,7 +28,7 @@ def send_message(
         return chat_history, "", "", gr.update(visible=False)
 
     if not session.is_authenticated():
-        chat_history.append(("Error", "請先登入"))
+        chat_history.append({"role": "assistant", "content": "請先登入"})
         return chat_history, "", "❌ 請先登入", gr.update(visible=True)
 
     try:
@@ -39,11 +39,13 @@ def send_message(
             data = response.json()
             session.set_conversation_id(data["conversation_id"])
 
-            # Add to chat history
-            chat_history.append((message, data["assistant_message"]["content"]))
+            # Add to chat history in messages format
+            chat_history.append({"role": "user", "content": message})
+            chat_history.append({"role": "assistant", "content": data["assistant_message"]["content"]})
             return chat_history, "", "✅ 訊息已發送", gr.update(visible=True)
         else:
-            chat_history.append((message, f"Error: {response.text}"))
+            chat_history.append({"role": "user", "content": message})
+            chat_history.append({"role": "assistant", "content": f"Error: {response.text}"})
             return (
                 chat_history,
                 "",
@@ -52,7 +54,8 @@ def send_message(
             )
 
     except requests.exceptions.RequestException as e:
-        chat_history.append((message, f"連接錯誤: {e}"))
+        chat_history.append({"role": "user", "content": message})
+        chat_history.append({"role": "assistant", "content": f"連接錯誤: {e}"})
         return chat_history, "", f"❌ 連接錯誤: {e}", gr.update(visible=True)
 
 
@@ -121,7 +124,7 @@ def load_conversation_messages(conversation_id: str) -> list:
         conversation_id: Conversation ID
 
     Returns:
-        list: Chat history
+        list: Chat history in messages format
     """
     if not conversation_id or not session.is_authenticated():
         return []
@@ -133,15 +136,12 @@ def load_conversation_messages(conversation_id: str) -> list:
             data = response.json()
             session.set_conversation_id(conversation_id)
 
-            # Convert to chat history format
-            chat_history = []
+            # Convert to messages format
             messages = data["messages"]
-
-            for i in range(0, len(messages) - 1, 2):
-                if i + 1 < len(messages):
-                    user_msg = messages[i]["content"]
-                    assistant_msg = messages[i + 1]["content"]
-                    chat_history.append((user_msg, assistant_msg))
+            chat_history = [
+                {"role": msg.get("role", "user" if i % 2 == 0 else "assistant"), "content": msg["content"]}
+                for i, msg in enumerate(messages)
+            ]
 
             return chat_history
         return []
@@ -183,7 +183,7 @@ def create_chat_tab() -> tuple:
             chatbot = gr.Chatbot(
                 label="聊天訊息",
                 height=500,
-                type="tuples",
+                type="messages",
                 show_copy_button=True,
                 avatar_images=(None, BOT_AVATAR_IMAGE),
             )

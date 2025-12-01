@@ -11,7 +11,7 @@ from src.frontend.services.session import session
 
 def register(
     username: str, email: str, password: str, confirm_password: str, full_name: str
-) -> tuple[str, gr.update, gr.update, gr.update, gr.update, gr.update, gr.update]:
+) -> tuple[gr.update, gr.update, gr.update, gr.update, gr.update, gr.update]:
     """
     Handle user registration.
 
@@ -23,14 +23,13 @@ def register(
         full_name: Full name (optional)
 
     Returns:
-        tuple: (status message, status visibility update, tabs update, send_btn update,
+        tuple: (status update, tabs update, send_btn update,
                 upload_btn update, new_chat_btn update, refresh_btn update)
     """
     # Validation
     if not username or not username.strip():
         return (
-            "❌ 請輸入使用者名稱",
-            gr.update(visible=True),
+            gr.update(value="❌ 請輸入使用者名稱", visible=True),
             gr.update(),
             gr.update(),
             gr.update(),
@@ -40,8 +39,7 @@ def register(
 
     if not email or not email.strip():
         return (
-            "❌ 請輸入電子郵件",
-            gr.update(visible=True),
+            gr.update(value="❌ 請輸入電子郵件", visible=True),
             gr.update(),
             gr.update(),
             gr.update(),
@@ -51,8 +49,7 @@ def register(
 
     if not password or len(password) < 6:
         return (
-            "❌ 密碼至少需要 6 個字元",
-            gr.update(visible=True),
+            gr.update(value="❌ 密碼至少需要 6 個字元", visible=True),
             gr.update(),
             gr.update(),
             gr.update(),
@@ -62,8 +59,7 @@ def register(
 
     if password != confirm_password:
         return (
-            "❌ 密碼不一致",
-            gr.update(visible=True),
+            gr.update(value="❌ 密碼不一致", visible=True),
             gr.update(),
             gr.update(),
             gr.update(),
@@ -91,8 +87,7 @@ def register(
             )
 
             return (
-                f"✅ 註冊成功！歡迎, {username}!",
-                gr.update(visible=True),  # Show status
+                gr.update(value=f"✅ 註冊成功！歡迎, {username}!", visible=True),  # Status with visibility
                 gr.update(selected=2),  # Switch to chat tab (index 2)
                 gr.update(interactive=True),  # Enable send_btn
                 gr.update(interactive=True),  # Enable upload_btn (in doc management tab)
@@ -102,8 +97,7 @@ def register(
         else:
             error_detail = response.json().get("detail", "註冊失敗")
             return (
-                f"❌ {error_detail}",
-                gr.update(visible=True),
+                gr.update(value=f"❌ {error_detail}", visible=True),
                 gr.update(),
                 gr.update(),
                 gr.update(),
@@ -113,8 +107,7 @@ def register(
 
     except requests.exceptions.RequestException as e:
         return (
-            f"❌ 無法連接到伺服器: {e}",
-            gr.update(visible=True),
+            gr.update(value=f"❌ 無法連接到伺服器: {e}", visible=True),
             gr.update(),
             gr.update(),
             gr.update(),

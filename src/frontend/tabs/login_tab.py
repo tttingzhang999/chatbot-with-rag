@@ -11,7 +11,7 @@ from src.frontend.services.session import session
 
 def login(
     username: str, password: str
-) -> tuple[str, gr.update, gr.update, gr.update, gr.update, gr.update, gr.update]:
+) -> tuple[gr.update, gr.update, gr.update, gr.update, gr.update, gr.update]:
     """
     Handle user login.
 
@@ -20,14 +20,13 @@ def login(
         password: Password
 
     Returns:
-        tuple: (status message, status visibility update, tabs update, send_btn update,
+        tuple: (status update, tabs update, send_btn update,
                 upload_btn update, new_chat_btn update, refresh_btn update)
     """
     # Validation
     if not username or not username.strip():
         return (
-            "❌ 請輸入使用者名稱",
-            gr.update(visible=True),
+            gr.update(value="❌ 請輸入使用者名稱", visible=True),
             gr.update(),
             gr.update(),
             gr.update(),
@@ -37,8 +36,7 @@ def login(
 
     if not password:
         return (
-            "❌ 請輸入密碼",
-            gr.update(visible=True),
+            gr.update(value="❌ 請輸入密碼", visible=True),
             gr.update(),
             gr.update(),
             gr.update(),
@@ -60,8 +58,7 @@ def login(
             )
 
             return (
-                f"✅ 歡迎回來, {username}!",
-                gr.update(visible=True),  # Show status
+                gr.update(value=f"✅ 歡迎回來, {username}!", visible=True),  # Status with visibility
                 gr.update(selected=2),  # Switch to chat tab (index 2)
                 gr.update(interactive=True),  # Enable send_btn
                 gr.update(interactive=True),  # Enable upload_btn
@@ -71,8 +68,7 @@ def login(
         else:
             error_detail = response.json().get("detail", "登入失敗")
             return (
-                f"❌ {error_detail}",
-                gr.update(visible=True),
+                gr.update(value=f"❌ {error_detail}", visible=True),
                 gr.update(),
                 gr.update(),
                 gr.update(),
@@ -82,8 +78,7 @@ def login(
 
     except requests.exceptions.RequestException as e:
         return (
-            f"❌ 無法連接到伺服器: {e}",
-            gr.update(visible=True),
+            gr.update(value=f"❌ 無法連接到伺服器: {e}", visible=True),
             gr.update(),
             gr.update(),
             gr.update(),

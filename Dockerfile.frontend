@@ -1,47 +1,34 @@
 # ==============================================================================
-# Stage 1: Builder - Compile dependencies
+# Frontend Dockerfile - 普通容器版本（非 Lambda）
+# 使用 Uvicorn 運行 Gradio 應用
 # ==============================================================================
-FROM --platform=linux/amd64 public.ecr.aws/lambda/python:3.13 AS builder
 
-# Set working directory
-WORKDIR /build
+FROM python:3.13-slim
 
-# Install uv
+WORKDIR /app
+
+# 安裝 uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# Install build dependencies
-RUN dnf install -y gcc gcc-c++ && \
-    dnf clean all
-
-# Copy dependency files
+# 複製依賴文件
 COPY pyproject.toml uv.lock README.md ./
 
-# Generate requirements.txt from pyproject.toml and uv.lock
-RUN uv export --no-dev --no-hashes --format requirements-txt | grep -v '^-e \.' > requirements.txt
+# 使用 uv sync 安裝依賴（創建虛擬環境）
+# --frozen: 嚴格按照 uv.lock 安裝，不修改鎖文件
+# --no-dev: 不安裝開發依賴
+RUN uv sync --frozen --no-dev
 
-# Install dependencies directly to system Python (no virtual environment)
-RUN uv pip install --system --no-cache -r requirements.txt && \
-    uv pip install --system --no-cache mangum>=0.17.0
-
-# ==============================================================================
-# Stage 2: Runtime - Minimal production image
-# ==============================================================================
-FROM --platform=linux/amd64 public.ecr.aws/lambda/python:3.13
-
-# Set working directory
-WORKDIR ${LAMBDA_TASK_ROOT}
-
-# Copy only the installed Python packages from builder
-COPY --from=builder /var/lang/lib/python3.13/site-packages/ /var/lang/lib/python3.13/site-packages/
-
-# Copy application code
+# 複製應用代碼
 COPY src/ ./src/
 COPY assets/ ./assets/
-COPY lambda_handlers/frontend_handler.py ./
+COPY frontend_entrypoint.py ./
 
-# Set environment variables
+# 設置環境變數
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# Set the CMD to Lambda handler
-CMD ["frontend_handler.handler"]
+# 暴露 Gradio 端口
+EXPOSE 7860
+
+# 使用 uv run 啟動應用（自動激活虛擬環境）
+CMD ["uv", "run", "python", "frontend_entrypoint.py"]

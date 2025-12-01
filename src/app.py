@@ -22,20 +22,19 @@ from src.frontend.tabs.login_tab import create_login_tab, login
 from src.frontend.tabs.register_tab import create_register_tab, register
 
 
-def logout() -> tuple[str, gr.update, gr.update, gr.update, gr.update, gr.update, gr.update]:
+def logout() -> tuple[gr.update, gr.update, gr.update, gr.update, gr.update, gr.update]:
     """
     Logout current user.
 
     Returns:
-        tuple: (status message, status visibility update, tabs update, send_btn update,
+        tuple: (status update, tabs update, send_btn update,
                 upload_btn update, new_chat_btn update, refresh_btn update)
     """
     # Clear user session
     session.reset()
 
     return (
-        "✅ 已登出",
-        gr.update(visible=True),  # Show status
+        gr.update(value="✅ 已登出", visible=True),  # Status with visibility
         gr.update(selected=1),  # Switch to login tab (index 1)
         gr.update(interactive=False),  # Disable send_btn
         gr.update(interactive=False),  # Disable upload_btn
@@ -104,7 +103,6 @@ with gr.Blocks(title="HR Chatbot", theme=gr.themes.Soft()) as demo:
         ],
         outputs=[
             unified_status,
-            unified_status,
             tabs,
             send_btn,
             upload_btn,
@@ -119,7 +117,6 @@ with gr.Blocks(title="HR Chatbot", theme=gr.themes.Soft()) as demo:
         inputs=[login_username_input, login_password_input],
         outputs=[
             unified_status,
-            unified_status,
             tabs,
             send_btn,
             upload_btn,
@@ -132,7 +129,6 @@ with gr.Blocks(title="HR Chatbot", theme=gr.themes.Soft()) as demo:
     logout_btn.click(
         fn=logout,
         outputs=[
-            unified_status,
             unified_status,
             tabs,
             send_btn,
