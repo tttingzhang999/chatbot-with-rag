@@ -20,7 +20,13 @@ router = APIRouter(prefix="/upload", tags=["upload"])
 
 # Upload directory (for local development)
 UPLOAD_DIR = Path(settings.UPLOAD_DIR)
-UPLOAD_DIR.mkdir(exist_ok=True)
+# Only create directory if filesystem is writable (not Lambda)
+try:
+    UPLOAD_DIR.mkdir(exist_ok=True)
+except OSError:
+    # Lambda has read-only filesystem, use /tmp instead
+    UPLOAD_DIR = Path("/tmp/uploads")
+    UPLOAD_DIR.mkdir(exist_ok=True)
 
 
 class DocumentUploadResult(BaseModel):

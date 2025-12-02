@@ -11,8 +11,9 @@ services:
       - .env
     environment:
       - PYTHONUNBUFFERED=1
+      # Docker 環境專用配置：連接到本機 PostgreSQL
       - DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:5432/hr_chatbot
-      - SECRET_KEY=uJgxTBmfHodx5difgGadv_nD3u52NNILV6XZCMYCM4s
+      # SECRET_KEY 從 .env 讀取，不在此覆寫
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped

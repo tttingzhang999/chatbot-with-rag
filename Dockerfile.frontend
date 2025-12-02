@@ -30,5 +30,5 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # 暴露 Gradio 端口
 EXPOSE 7860
 
-# 使用 uv run 啟動應用（自動激活虛擬環境）
-CMD ["uv", "run", "python", "frontend_entrypoint.py"]
+# 直接使用虛擬環境中的 Python 啟動（避免 uv run 重新檢查依賴）
+CMD [".venv/bin/python", "frontend_entrypoint.py"]

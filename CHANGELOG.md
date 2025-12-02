@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] 2025-12-02 - AWS Cloud Deployment: Lambda, API Gateway, App Runner
+
+### Added
+
+- **Production-grade AWS deployment:** End-to-end support for deploying backend (FastAPI) as a Lambda container via API Gateway and deploying frontend (Gradio) to AWS App Runner, complete with all required environment variables, security, and networking considerations.
+- **Comprehensive AWS deployment guide:** New deployment troubleshooting guide, linked and included as in-code and documentation comments, covering common issues (health checks, port configuration, container platform, Lambda cold/warm starts) for AWS Lambda and App Runner.
+- **AppRunner & Lambda Docker best practices:** Added step-by-step instructions for multi-architecture builds, correct manifest/media types for ECR/Lambda, optimal health check & port configs for App Runner.
+- **Automatic / secure environment loading in scripts:** All startup and deployment scripts (backend/frontend AWS/local) upgraded to load environment from `.env`, robustly handle missing or overridden variables (`UVICORN_PORT`, `GRADIO_PORT`, `AWS_PROFILE`, etc), and properly fall back to AWS/AppRunner-provided envs.
+- **Safer upload dir handling:** Upload path for file storage now always falls back to `/tmp` if running on Lambda or read-only filesystems.
+- **Updated `.env.example`:** All config (including optional API/meta/CORS/limits) now fully documented for clarity in cloud, CI, or local.
+- **App Runner/Lambda deployment configs, build scripts, and troubleshooting:** See new `/aws_deployment_guide.md`, and extensive notes in `CHANGELOG.md` for real-world issues encountered and solved.
+
+### Changed
+
+- **Default LLM and embedding model IDs:** Updated defaults in `.env.example` for Anthropic Claude 3.5 and Cohere v4:0, matching latest supported Bedrock endpoints and embedding dimension (1536).
+- **Backend/Frontend launch scripts:** Each startup script now prints clear, colorized cloud-local diagnostic headers and URLs that reflect AWS env variables, improving dev/prod consistency.
+- **Port configuration:** All services (backend via Uvicorn, frontend via Gradio) now allow for proper port override using standard AWS/App Runner conventions. Gradio no longer hardcodes the port; respects `GRADIO_PORT` and App Runner env.
+- **.gitignore** updated: binary doc types (`*.pdf`) now excluded by default.
+
+### Fixed
+
+- **Upload directory errors on Lambda:** Protects against OSError/"read-only filesystem" by using runtime temp folder.
+- **Dev/prod env variable confusion:** All config vars now load in correct order for both scripts and application entrypoints.
+- **Multiple deployment pain points:** Changelog and `/aws_deployment_guide.md` list and solve key obstacles, especially with App Runner health checks, port/env mismatch, and Docker image platform/manifest types for Lambda/ECR.
+
+### Migration Notes
+
+- To deploy backend on Lambda with ECR, ensure Docker images are built for `linux/amd64` and `application/vnd.docker.distribution.manifest.v2+json` format.
+- To deploy frontend on App Runner, ensure Docker images listen on the port provided by the `PORT` env variable, or configure App Runner's image settings to use `GRADIO_PORT`.
+- Check `/aws_deployment_guide.md` and long-form CHANGELOG section for detailed troubleshooting and verified AWS configuration examples.
+
+### See Also
+
+- [aws_deployment_guide.md](./aws_deployment_guide.md): Detailed end-to-end instructions for AWS Lambda + API Gateway (backend) and App Runner (frontend).
+- [local_development.md](./local_development.md): Local testing & dev environment setup, now matching production env structure.
+- [architecture.md](./architecture.md): System design, cloud-native patterns, and user/session flow.
+- See CHANGELOG below for real-world fixes, migration steps, and troubleshooting cheatsheet, updated for 2025 cloud deployment.
+
+
 ## [0.6.0] 2025-12-01 - Frontend Refactor, Session Management, AWS Secrets
 
 ### Added
