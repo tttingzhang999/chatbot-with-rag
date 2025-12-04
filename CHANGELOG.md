@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] 2025-12-03 - AWS Terraform Infrastructure: VPC, DB, Lambda, App Runner
+
+### Added
+
+- **Terraform deployments for AWS infrastructure:**  
+  - All-in-one IaC for end-to-end deployment on AWS, including VPC setup, public/private subnets, networking (security groups, endpoints), RDS Aurora PostgreSQL, Lambda backend, App Runner frontend, S3, and required Secrets Manager entries.
+  - `main.tf` with provider and backend config, supports cross-account Route 53 management and ACM certificate for App Runner domain.
+  - `vpc.tf`, `database.tf`, `lambda.tf`, `apprunner.tf`, `route53.tf`, `outputs.tf`, `s3.tf`, `secret.tf` — modular Terraform configs for all major infra resources now included.
+- **App Runner TLS/Domain automation:**  
+  - Automatic ACM certificate creation and DNS validation for App Runner HTTPS custom domain (`ting-hr-chatbot.goingcloud.ai`) using Route 53 in separate AWS account.
+  - Output variables for validation, DNS targets, and troubleshooting.
+- **Lambda/Container deployment clarifications:**  
+  - All environments, roles, networking and image refs for Lambda and App Runner now managed via Terraform variables and outputs.
+  - Includes automation notes for image versioning and role ARNs.
+
+### Changed
+
+- **uv.lock / requirements updates:**  
+  - Added `mangum` (`0.19.0`) to dependencies for Lambda ASGI compatibility.
+
+### Migration & Usage Notes
+
+- See `/terraform/README.md` and top of each Terraform module for usage, required AWS profiles, and prerequisites.
+- ECR image tags and referenced role ARNs must match your CI or manual build flow.
+- Some manual steps may be required after first App Runner custom domain deploy (validation records).
+- Example DNS zone is hardcoded to GoingCloud test account and should be replaced for production use.
+
+### See Also
+
+- All new Terraform configs under `/terraform`
+- aws_deployment_guide.md for Lambda, App Runner, ACM, and DNS troubleshooting
+
 ## [0.7.0] 2025-12-02 - AWS Cloud Deployment: Lambda, API Gateway, App Runner
 
 ### Added

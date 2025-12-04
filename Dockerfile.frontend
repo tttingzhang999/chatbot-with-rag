@@ -1,34 +1,67 @@
 # ==============================================================================
-# Frontend Dockerfile - 普通容器版本（非 Lambda）
-# 使用 Uvicorn 運行 Gradio 應用
+# Optimized Frontend Dockerfile using uv virtual environments
+# Non-Lambda container running Gradio application
 # ==============================================================================
+#
+# Build example:
+#   docker build -f Dockerfile.frontend -t hr-chatbot-frontend .
+#
 
-FROM python:3.13-slim
+# ==============================================================================
+# Stage 1: Builder - Install dependencies with uv virtual environment
+# ==============================================================================
+FROM python:3.13-slim AS builder
 
-WORKDIR /app
+WORKDIR /build
 
-# 安裝 uv
+# Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# 複製依賴文件
+# Configure uv for optimal Docker builds
+ENV UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
+    UV_PYTHON_DOWNLOADS=never
+
+# Copy dependency files first (better layer caching)
 COPY pyproject.toml uv.lock README.md ./
 
-# 使用 uv sync 安裝依賴（創建虛擬環境）
-# --frozen: 嚴格按照 uv.lock 安裝，不修改鎖文件
-# --no-dev: 不安裝開發依賴
-RUN uv sync --frozen --no-dev
+# Install dependencies into virtual environment
+# --no-install-project separates dependencies from project code for better caching
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
 
-# 複製應用代碼
+# Copy application code
 COPY src/ ./src/
 COPY assets/ ./assets/
 COPY frontend_entrypoint.py ./
 
-# 設置環境變數
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
+# Install the project itself (dependencies already installed above)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-editable
 
-# 暴露 Gradio 端口
+# ==============================================================================
+# Stage 2: Runtime - Minimal production image
+# ==============================================================================
+FROM python:3.13-slim
+
+WORKDIR /app
+
+# Copy the virtual environment from builder
+COPY --from=builder /build/.venv /app/.venv
+
+# Copy application code and assets
+COPY --from=builder /build/src ./src
+COPY --from=builder /build/assets ./assets
+COPY --from=builder /build/frontend_entrypoint.py ./
+
+# Configure Python to use virtual environment
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/app/.venv/bin:$PATH" \
+    VIRTUAL_ENV="/app/.venv"
+
+# Expose Gradio port
 EXPOSE 7860
 
-# 直接使用虛擬環境中的 Python 啟動（避免 uv run 重新檢查依賴）
-CMD [".venv/bin/python", "frontend_entrypoint.py"]
+# Use virtual environment Python directly (faster than uv run)
+CMD ["python", "frontend_entrypoint.py"]

@@ -512,7 +512,7 @@ curl http://hr-chatbot-frontend-alb-xxxxx.ap-northeast-1.elb.amazonaws.com
 2. 點擊 **Request a certificate**
 3. 選擇 **Request a public certificate**
 4. 配置：
-   - **Fully qualified domain name**: `hr-chatbot.goingcloud.ai`
+   - **Fully qualified domain name**: `hr-chatbot.going.cloud`
    - **Validation method**: DNS validation
 5. 點擊 **Request**
 
@@ -552,7 +552,7 @@ curl http://hr-chatbot-frontend-alb-xxxxx.ap-northeast-1.elb.amazonaws.com
 #### 10.1 創建 A Record
 
 1. 前往 [Route 53 Console](https://console.aws.amazon.com/route53/v2/hostedzones)
-2. 選擇 Hosted zone: `goingcloud.ai`
+2. 選擇 Hosted zone: `going.cloud`
 3. 點擊 **Create record**
 4. 配置：
    - **Record name**: `hr-chatbot`
@@ -569,10 +569,10 @@ curl http://hr-chatbot-frontend-alb-xxxxx.ap-northeast-1.elb.amazonaws.com
 
 ```bash
 # 檢查 DNS 解析
-nslookup hr-chatbot.goingcloud.ai
+nslookup hr-chatbot.going.cloud
 
 # 測試 HTTPS 訪問
-curl -I https://hr-chatbot.goingcloud.ai
+curl -I https://hr-chatbot.going.cloud
 ```
 
 **⚠️ 重要提醒**: 不要修改或刪除現有的 Route 53 記錄！
@@ -611,7 +611,7 @@ curl -X POST https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/chat \
 
 **瀏覽器訪問**:
 ```
-https://hr-chatbot.goingcloud.ai
+https://hr-chatbot.going.cloud
 ```
 
 **功能測試**:

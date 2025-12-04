@@ -107,13 +107,62 @@ class APIClient:
         )
 
     # Document endpoints
-    def upload_documents(self, files: list) -> requests.Response:
-        """Upload one or more documents."""
+    def get_presigned_upload_url(
+        self, filename: str, file_type: str, file_size: int
+    ) -> requests.Response:
+        """
+        Get pre-signed URL for direct S3 upload.
+
+        Args:
+            filename: Original filename
+            file_type: File extension (pdf, docx, txt, doc)
+            file_size: File size in bytes
+
+        Returns:
+            Response with pre-signed URL and upload fields
+        """
         return self._request(
             "POST",
-            "/upload/document",
-            files=files,
-            timeout=settings.HTTP_TIMEOUT_UPLOAD,
+            "/upload/presigned-url",
+            json={"filename": filename, "file_type": file_type, "file_size": file_size},
+            timeout=settings.HTTP_TIMEOUT_SHORT,
+        )
+
+    def upload_to_s3(self, presigned_url: str, content_type: str, file_path: str) -> requests.Response:
+        """
+        Upload file directly to S3 using pre-signed PUT URL.
+
+        Args:
+            presigned_url: S3 endpoint URL
+            content_type: Content-Type header value
+            file_path: Path to file to upload
+
+        Returns:
+            Response from S3
+        """
+        with open(file_path, "rb") as f:
+            return requests.put(
+                presigned_url,
+                data=f,
+                headers={"Content-Type": content_type},
+                timeout=settings.HTTP_TIMEOUT_UPLOAD,
+            )
+
+    def trigger_document_processing(self, document_id: str) -> requests.Response:
+        """
+        Trigger document processing after S3 upload completes.
+
+        Args:
+            document_id: UUID of the document to process
+
+        Returns:
+            Response with processing status
+        """
+        return self._request(
+            "POST",
+            "/upload/process-document",
+            json={"document_id": document_id},
+            timeout=settings.HTTP_TIMEOUT_SHORT,
         )
 
     def get_documents(self) -> requests.Response:

@@ -68,7 +68,7 @@ graph TB
     end
 
     subgraph "網路層 (Network Layer)"
-        R53[Amazon Route 53<br/>DNS: *.goingcloud.ai]
+        R53[Amazon Route 53<br/>DNS: *.going.cloud]
         ACM[AWS Certificate<br/>Manager<br/>SSL/TLS]
     end
 
@@ -142,7 +142,7 @@ graph TB
 ### 架構說明
 
 **網路層**：
-- Route 53 提供 DNS 解析 (*.goingcloud.ai)
+- Route 53 提供 DNS 解析 (*.going.cloud)
 - Certificate Manager 管理 SSL/TLS 憑證
 - 所有流量透過 HTTPS 加密
 

@@ -1,51 +1,62 @@
 """
-File upload routes with document processing.
+File upload routes with pre-signed URL support.
+
+This module provides endpoints for:
+1. Generating pre-signed S3 URLs for direct client-to-S3 uploads
+2. Triggering document processing after S3 upload completes
+3. Managing documents (list, delete)
 """
 
 import logging
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile, status
-from pydantic import BaseModel
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from pydantic import BaseModel, Field
 
 from src.api.deps import CurrentUser, DBSession
 from src.core.config import settings
 from src.models.document import Document
 from src.services.document_service import DocumentProcessor, delete_document, get_user_documents
+from src.services.s3_service import get_s3_service
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/upload", tags=["upload"])
 
-# Upload directory (for local development)
-UPLOAD_DIR = Path(settings.UPLOAD_DIR)
-# Only create directory if filesystem is writable (not Lambda)
-try:
-    UPLOAD_DIR.mkdir(exist_ok=True)
-except OSError:
-    # Lambda has read-only filesystem, use /tmp instead
-    UPLOAD_DIR = Path("/tmp/uploads")
-    UPLOAD_DIR.mkdir(exist_ok=True)
+
+# ========== Request/Response Models ==========
 
 
-class DocumentUploadResult(BaseModel):
-    """Single document upload result."""
+class PresignedUrlRequest(BaseModel):
+    """Request model for pre-signed URL generation."""
+
+    filename: str = Field(..., description="Original filename")
+    file_type: str = Field(..., description="File extension (pdf, docx, txt, doc)")
+    file_size: int = Field(..., ge=1, le=50 * 1024 * 1024, description="File size in bytes (max 50MB)")
+
+
+class PresignedUrlResponse(BaseModel):
+    """Response model containing pre-signed URL for S3 upload."""
+
+    document_id: str = Field(..., description="UUID of the created document record")
+    upload_url: str = Field(..., description="S3 endpoint URL for PUT request")
+    s3_key: str = Field(..., description="S3 object key")
+    content_type: str = Field(..., description="Content-Type header to use")
+    expires_in: int = Field(default=300, description="URL expiration time in seconds")
+
+
+class ProcessDocumentRequest(BaseModel):
+    """Request model to trigger document processing."""
+
+    document_id: str = Field(..., description="UUID of the document to process")
+
+
+class ProcessDocumentResponse(BaseModel):
+    """Response model for processing trigger."""
 
     document_id: str
-    filename: str
-    size: int
-    status: str  # "success" or "failed"
-    error_message: str | None = None
-
-
-class UploadResponse(BaseModel):
-    """Upload response model for multiple files."""
-
-    results: list[DocumentUploadResult]
-    total: int
-    successful: int
-    failed: int
+    status: str
     message: str
 
 
@@ -75,28 +86,60 @@ class DeleteResponse(BaseModel):
     message: str
 
 
-def process_document_background(
+# ========== Background Processing ==========
+
+
+def process_uploaded_document(
     document_id: uuid.UUID,
-    file_path: str,
+    s3_path: str,
     file_type: str,
     db_url: str,
 ) -> None:
     """
-    Background task to process document.
+    Background task to process document from S3.
 
-    This simulates AWS Lambda async processing.
+    This function:
+    1. Downloads file from S3 to /tmp
+    2. Creates new database session
+    3. Calls DocumentProcessor.process_document_sync()
+    4. Updates document status on success or failure
+    5. Cleans up temp file
 
     Args:
         document_id: Document UUID
-        file_path: Path to uploaded file
-        file_type: File type (pdf, docx, txt)
+        s3_path: S3 URI (s3://bucket/key)
+        file_type: File extension
         db_url: Database URL for creating new session
     """
+    import os
+    import tempfile
+
+    import boto3
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
+    temp_file = None
+
     try:
         logger.info(f"Background processing started for document: {document_id}")
+
+        # Parse S3 path (s3://bucket/key)
+        if not s3_path.startswith("s3://"):
+            raise ValueError(f"Invalid S3 path format: {s3_path}")
+
+        s3_path_parts = s3_path[5:].split("/", 1)
+        if len(s3_path_parts) != 2:
+            raise ValueError(f"Invalid S3 path format: {s3_path}")
+
+        bucket_name = s3_path_parts[0]
+        s3_key = s3_path_parts[1]
+
+        # Download file from S3 to /tmp
+        s3_client = boto3.client("s3", region_name=settings.AWS_REGION)
+        temp_file = tempfile.mktemp(suffix=f".{file_type}", dir="/tmp")
+
+        logger.info(f"Downloading {s3_path} to {temp_file}")
+        s3_client.download_file(bucket_name, s3_key, temp_file)
 
         # Create new database session for background task
         engine = create_engine(db_url)
@@ -104,162 +147,214 @@ def process_document_background(
         db = SessionLocal()
 
         try:
-            # Create processor and process document
+            # Process document
             processor = DocumentProcessor(db)
-            result = processor.process_document_sync(document_id, file_path, file_type)
-            logger.info(f"Document processed: {result}")
+            result = processor.process_document_sync(document_id, temp_file, file_type)
+            logger.info(f"Document processed successfully: {result}")
         finally:
             db.close()
 
     except Exception as e:
-        logger.error(f"Background processing failed for document {document_id}: {e}")
+        logger.error(f"Background processing failed for document {document_id}: {e}", exc_info=True)
+
+        # Update document status to failed
+        try:
+            engine = create_engine(db_url)
+            SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+            db = SessionLocal()
+            try:
+                document = db.query(Document).filter(Document.id == document_id).first()
+                if document:
+                    document.status = "failed"
+                    document.error_message = str(e)
+                    db.commit()
+            finally:
+                db.close()
+        except Exception as update_error:
+            logger.error(f"Failed to update document status: {update_error}")
+
+    finally:
+        # Clean up temp file
+        if temp_file and os.path.exists(temp_file):
+            try:
+                os.unlink(temp_file)
+                logger.info(f"Cleaned up temp file: {temp_file}")
+            except Exception as cleanup_error:
+                logger.warning(f"Failed to delete temp file {temp_file}: {cleanup_error}")
 
 
-@router.post("/document", response_model=UploadResponse)
-async def upload_document(
-    background_tasks: BackgroundTasks,
-    files: list[UploadFile] = File(...),
+# ========== API Endpoints ==========
+
+
+@router.post("/presigned-url", response_model=PresignedUrlResponse)
+def get_presigned_upload_url(
+    request: PresignedUrlRequest,
     current_user: CurrentUser = None,
     db: DBSession = None,
-) -> UploadResponse:
+) -> PresignedUrlResponse:
     """
-    Upload one or multiple documents and trigger processing.
+    Generate pre-signed S3 URL for direct client-to-S3 upload.
 
     This endpoint:
-    1. Saves files to local storage (or S3 in production)
-    2. Creates Document records in database
-    3. Triggers async processing for each file (simulates Lambda)
-    4. Processes files sequentially in the order they were uploaded
+    1. Validates file type and size
+    2. Creates Document record with status='pending'
+    3. Generates pre-signed S3 POST URL
+    4. Returns URL and required form fields
 
     Args:
-        background_tasks: FastAPI background tasks
-        files: List of uploaded files
+        request: Pre-signed URL request
         current_user: Current authenticated user
         db: Database session
 
     Returns:
-        UploadResponse: Upload confirmation with results for each file
+        PresignedUrlResponse: Pre-signed URL and upload details
     """
-    results: list[DocumentUploadResult] = []
-    successful_count = 0
-    failed_count = 0
+    try:
+        # Validate file type
+        file_type = request.file_type.lower().lstrip(".")
+        if file_type not in settings.SUPPORTED_FILE_TYPES:
+            supported_types = ", ".join(settings.SUPPORTED_FILE_TYPES)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unsupported file type: {file_type}. Supported: {supported_types}",
+            )
 
-    for file in files:
+        # Create document record with status='pending'
+        document_id = uuid.uuid4()
+        document = Document(
+            id=document_id,
+            user_id=current_user.id,
+            file_name=request.filename,
+            file_path="",  # Will be set after S3 upload
+            file_type=file_type,
+            file_size=request.file_size,
+            status="pending",
+        )
+        db.add(document)
+        db.commit()
+        db.refresh(document)
+
+        logger.info(f"Created pending document record: {document_id}")
+
+        # Generate pre-signed URL
+        s3_service = get_s3_service()
+        presigned_data = s3_service.generate_presigned_upload_url(
+            document_id=str(document_id),
+            filename=request.filename,
+            file_type=file_type,
+            expiration=300,  # 5 minutes
+        )
+
+        # Update document with S3 path
+        document.file_path = presigned_data["s3_path"]
+        db.commit()
+
+        logger.info(f"Generated pre-signed URL for document: {document_id}")
+        logger.info(f"Presigned URL: {presigned_data['url']}")
+
+        return PresignedUrlResponse(
+            document_id=str(document_id),
+            upload_url=presigned_data["url"],
+            s3_key=presigned_data["s3_key"],
+            content_type=presigned_data["content_type"],
+            expires_in=300,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to generate pre-signed URL: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate upload URL: {str(e)}",
+        )
+
+
+@router.post("/process-document", response_model=ProcessDocumentResponse)
+def trigger_document_processing(
+    request: ProcessDocumentRequest,
+    background_tasks: BackgroundTasks,
+    current_user: CurrentUser = None,
+    db: DBSession = None,
+) -> ProcessDocumentResponse:
+    """
+    Trigger document processing after S3 upload completes.
+
+    This endpoint:
+    1. Validates document exists and is 'pending'
+    2. Triggers background processing via BackgroundTasks
+    3. Returns processing status
+
+    Args:
+        request: Processing request with document_id
+        background_tasks: FastAPI background tasks
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        ProcessDocumentResponse: Processing status
+    """
+    try:
+        # Validate UUID
         try:
-            # Validate filename
-            if not file.filename:
-                results.append(
-                    DocumentUploadResult(
-                        document_id="",
-                        filename="unknown",
-                        size=0,
-                        status="failed",
-                        error_message="No filename provided",
-                    )
-                )
-                failed_count += 1
-                continue
-
-            # Extract just the filename (without path) from potentially full path
-            original_filename = Path(file.filename).name
-
-            # Get file extension
-            file_ext = Path(original_filename).suffix.lower().lstrip(".")
-            if file_ext not in settings.SUPPORTED_FILE_TYPES:
-                supported_types = ", ".join(settings.SUPPORTED_FILE_TYPES)
-                results.append(
-                    DocumentUploadResult(
-                        document_id="",
-                        filename=original_filename,
-                        size=0,
-                        status="failed",
-                        error_message=f"Unsupported file type: {file_ext}. Supported: {supported_types}",
-                    )
-                )
-                failed_count += 1
-                continue
-
-            # Read file content
-            content = await file.read()
-            file_size = len(content)
-
-            # Generate unique filename
-            document_id = uuid.uuid4()
-            unique_filename = f"{document_id}_{original_filename}"
-            file_path = UPLOAD_DIR / unique_filename
-
-            # Save file to local storage
-            with open(file_path, "wb") as f:
-                f.write(content)
-
-            logger.info(f"File saved: {file_path}")
-
-            # Create Document record in database
-            document = Document(
-                id=document_id,
-                user_id=current_user.id,
-                file_name=original_filename,
-                file_path=str(file_path),
-                file_type=file_ext,
-                file_size=file_size,
-                status="pending",
-            )
-            db.add(document)
-            db.commit()
-            db.refresh(document)
-
-            logger.info(f"Document record created: {document_id}")
-
-            # Trigger background processing (simulates Lambda)
-            # BackgroundTasks will process these sequentially in order
-            background_tasks.add_task(
-                process_document_background,
-                document_id=document_id,
-                file_path=str(file_path),
-                file_type=file_ext,
-                db_url=settings.DATABASE_URL,
+            doc_uuid = uuid.UUID(request.document_id)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid document ID format",
             )
 
-            results.append(
-                DocumentUploadResult(
-                    document_id=str(document_id),
-                    filename=original_filename,
-                    size=file_size,
-                    status="success",
-                    error_message=None,
-                )
+        # Get document from database
+        document = db.query(Document).filter(
+            Document.id == doc_uuid,
+            Document.user_id == current_user.id,
+        ).first()
+
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found or not authorized",
             )
-            successful_count += 1
 
-        except Exception as e:
-            logger.error(f"Upload failed for file {file.filename}: {e}")
-            results.append(
-                DocumentUploadResult(
-                    document_id="",
-                    filename=file.filename or "unknown",
-                    size=0,
-                    status="failed",
-                    error_message=str(e),
-                )
+        # Verify document is in pending state
+        if document.status != "pending":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Document is not in pending state (current: {document.status})",
             )
-            failed_count += 1
 
-    # Generate summary message
-    total = len(files)
-    if failed_count == 0:
-        message = f"成功上傳 {successful_count} 個文件，處理已在背景執行"
-    elif successful_count == 0:
-        message = f"所有 {total} 個文件上傳失敗"
-    else:
-        message = f"成功上傳 {successful_count}/{total} 個文件，{failed_count} 個失敗"
+        # Verify file path is S3 path
+        if not document.file_path.startswith("s3://"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Document does not have a valid S3 path",
+            )
 
-    return UploadResponse(
-        results=results,
-        total=total,
-        successful=successful_count,
-        failed=failed_count,
-        message=message,
-    )
+        # Trigger background processing
+        background_tasks.add_task(
+            process_uploaded_document,
+            document_id=doc_uuid,
+            s3_path=document.file_path,
+            file_type=document.file_type,
+            db_url=settings.DATABASE_URL,
+        )
+
+        logger.info(f"Triggered processing for document: {doc_uuid}")
+
+        return ProcessDocumentResponse(
+            document_id=str(doc_uuid),
+            status="processing",
+            message="Document processing started in background",
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to trigger processing for {request.document_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to trigger document processing: {str(e)}",
+        )
 
 
 @router.get("/documents", response_model=DocumentListResponse)

@@ -2,8 +2,6 @@
 Document management tab component.
 """
 
-from contextlib import ExitStack
-
 import gradio as gr
 import requests
 
@@ -14,7 +12,12 @@ from src.frontend.services.session import session
 
 def upload_file(files) -> tuple[str, gr.update, list]:
     """
-    Upload one or multiple files to server.
+    Upload one or multiple files to S3 using pre-signed URLs with parallel processing.
+
+    New 3-step flow (parallelized):
+    1. Get pre-signed URL from backend
+    2. Upload directly to S3 using pre-signed PUT (parallel)
+    3. Trigger processing via backend API
 
     Args:
         files: Uploaded file or list of files
@@ -22,6 +25,10 @@ def upload_file(files) -> tuple[str, gr.update, list]:
     Returns:
         tuple: (status message, status visibility update, updated document list)
     """
+    import os
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from pathlib import Path
+
     if not files:
         return "❌ 請選擇檔案", gr.update(visible=True), load_documents()
 
@@ -33,36 +40,86 @@ def upload_file(files) -> tuple[str, gr.update, list]:
     if not isinstance(files, list):
         files = [files]
 
-    try:
-        # Prepare files for multipart upload using ExitStack for multiple context managers
-        with ExitStack() as stack:
-            files_to_upload = []
-            for file in files:
-                fh = stack.enter_context(open(file.name, "rb"))
-                files_to_upload.append(("files", (file.name, fh, "application/octet-stream")))
+    successful_count = 0
+    failed_count = 0
+    failed_files = []
 
-            response = api.upload_documents(files=files_to_upload)
+    def upload_single_file(file):
+        """Upload a single file (to be run in parallel)."""
+        try:
+            # Get file info
+            file_path = file.name
+            filename = Path(file_path).name
+            file_type = Path(file_path).suffix.lstrip(".")
+            file_size = os.path.getsize(file_path)
 
-        if response.status_code == 200:
-            data = response.json()
-            # Reload documents list
-            documents = load_documents()
-
-            # Generate detailed message
-            message = f"✅ {data['message']}\n\n"
-            if data.get("failed", 0) > 0:
-                message += "失敗的文件:\n"
-                for result in data.get("results", []):
-                    if result["status"] == "failed":
-                        message += f"  • {result['filename']}: {result['error_message']}\n"
-
-            return message.strip(), gr.update(visible=True), documents
-        else:
-            return (
-                f"❌ 上傳失敗: {response.text}",
-                gr.update(visible=True),
-                load_documents(),
+            # Step 1: Get pre-signed URL from backend
+            response = api.get_presigned_upload_url(
+                filename=filename, file_type=file_type, file_size=file_size
             )
+
+            if response.status_code != 200:
+                error_msg = response.json().get("detail", "Failed to get upload URL")
+                return False, f"{filename}: {error_msg}"
+
+            presigned_data = response.json()
+            document_id = presigned_data["document_id"]
+            upload_url = presigned_data["upload_url"]
+            content_type = presigned_data["content_type"]
+
+            # Step 2: Upload directly to S3 using PUT
+            s3_response = api.upload_to_s3(upload_url, content_type, file_path)
+
+            if s3_response.status_code not in [200, 204]:
+                return False, f"{filename}: S3 upload failed ({s3_response.status_code})"
+
+            # Step 3: Trigger processing
+            process_response = api.trigger_document_processing(document_id)
+
+            if process_response.status_code != 200:
+                error_msg = process_response.json().get("detail", "Failed to trigger processing")
+                return False, f"{filename}: {error_msg}"
+
+            return True, filename
+
+        except Exception as file_error:
+            return False, f"{filename}: {str(file_error)}"
+
+    try:
+        # Use ThreadPoolExecutor for parallel uploads (max 5 concurrent uploads)
+        max_workers = min(5, len(files))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all upload tasks
+            future_to_file = {executor.submit(upload_single_file, file): file for file in files}
+
+            # Collect results as they complete
+            for future in as_completed(future_to_file):
+                success, message = future.result()
+                if success:
+                    successful_count += 1
+                else:
+                    failed_files.append(message)
+                    failed_count += 1
+
+        # Generate summary message
+        total = len(files)
+        if failed_count == 0:
+            message = f"✅ 成功上傳 {successful_count} 個文件，處理已在背景執行"
+        elif successful_count == 0:
+            message = f"❌ 所有 {total} 個文件上傳失敗"
+        else:
+            message = f"⚠️ 成功上傳 {successful_count}/{total} 個文件，{failed_count} 個失敗"
+
+        # Add failed file details
+        if failed_files:
+            message += "\n\n失敗的文件:\n"
+            for failed_file in failed_files:
+                message += f"  • {failed_file}\n"
+
+        # Reload documents list
+        documents = load_documents()
+
+        return message.strip(), gr.update(visible=True), documents
 
     except requests.exceptions.RequestException as e:
         return f"❌ 上傳錯誤: {e}", gr.update(visible=True), load_documents()

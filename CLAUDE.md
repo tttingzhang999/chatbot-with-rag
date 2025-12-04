@@ -41,7 +41,7 @@ User Question → Question Embedding → Hybrid Search (Aurora) → Context Retr
 - **Compute**: Lambda (container images from ECR)
 - **Storage**: S3 (raw documents), Aurora PostgreSQL Serverless (vectors + metadata)
 - **AI/ML**: Amazon Bedrock (Claude Sonnet 4, Cohere Embed v4)
-- **Network**: API Gateway, Route 53 (*.goingcloud.ai), Certificate Manager
+- **Network**: API Gateway, Route 53 (*.going.cloud), Certificate Manager
 - **Security**: Secrets Manager (DB credentials), IAM
 - **Frontend**: Gradio interface
 

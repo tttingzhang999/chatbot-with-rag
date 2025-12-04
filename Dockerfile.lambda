@@ -1,0 +1,71 @@
+# ==============================================================================
+# Optimized Lambda Dockerfile using uv virtual environments
+# Single target for backend Lambda (file processor integrated into backend)
+# ==============================================================================
+#
+# Build target:
+#   --target backend        Build chatbot backend Lambda
+#
+# Build example:
+#   docker build -f Dockerfile.lambda --target backend -t hr-chatbot-backend .
+#
+
+# ==============================================================================
+# Stage 1: Builder - Install dependencies using uv (official AWS Lambda method)
+# ==============================================================================
+FROM ghcr.io/astral-sh/uv:latest AS uv
+
+FROM public.ecr.aws/lambda/python:3.13 AS builder
+
+# Install build dependencies (gcc for psycopg2, numpy, etc.)
+RUN dnf install -y gcc gcc-c++ && \
+    dnf clean all
+
+# Copy uv from official image
+COPY --from=uv /uv /usr/local/bin/uv
+
+# Configure uv for optimal Docker builds (official best practices)
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_NO_INSTALLER_METADATA=1
+
+WORKDIR /build
+
+# Copy dependency files
+COPY pyproject.toml uv.lock README.md ./
+
+# Export dependencies to requirements.txt and install to LAMBDA_TASK_ROOT
+# This follows official uv AWS Lambda guide
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv export --frozen --no-emit-workspace --no-dev --no-editable -o requirements.txt && \
+    uv pip install -r requirements.txt --target "${LAMBDA_TASK_ROOT}"
+
+# Copy application code to LAMBDA_TASK_ROOT
+COPY src/ "${LAMBDA_TASK_ROOT}/src/"
+COPY alembic/ "${LAMBDA_TASK_ROOT}/alembic/"
+COPY alembic.ini "${LAMBDA_TASK_ROOT}/"
+COPY backend_entrypoint.py "${LAMBDA_TASK_ROOT}/"
+
+# ==============================================================================
+# Stage 2: Runtime - Final Lambda image
+# ==============================================================================
+FROM public.ecr.aws/lambda/python:3.13 AS runtime-base
+
+# Copy installed dependencies and application code from builder
+# Everything is already in LAMBDA_TASK_ROOT (/var/task)
+COPY --from=builder ${LAMBDA_TASK_ROOT} ${LAMBDA_TASK_ROOT}
+
+# Fix file permissions for Lambda
+RUN chmod -R 755 ${LAMBDA_TASK_ROOT}
+
+# Set Python environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+# ==============================================================================
+# Stage 3: Backend Lambda (File processor integrated)
+# ==============================================================================
+FROM runtime-base AS backend
+
+# Set Lambda handler for chatbot backend
+CMD ["backend_entrypoint.handler"]

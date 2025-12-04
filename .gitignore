@@ -89,3 +89,22 @@ temp/
 *.pdf
 
 lite-hub/
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Keep these Terraform files (exceptions to above rules)
+# Uncomment if you want to version lock file
+# !.terraform.lock.hcl

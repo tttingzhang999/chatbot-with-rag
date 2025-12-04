@@ -104,7 +104,7 @@ class Settings(BaseSettings):
 
     # ========== AWS Configuration ==========
     AWS_REGION: str = Field(
-        default="us-east-1",
+        default="ap-northeast-1",
         description="AWS region for Bedrock and other services",
     )
     AWS_PROFILE: str | None = Field(
@@ -134,8 +134,12 @@ class Settings(BaseSettings):
 
     # ========== S3 Configuration ==========
     DOCUMENT_BUCKET: str = Field(
-        default="",
-        description="Optional: S3 bucket name for document storage (only needed when using S3)",
+        default="hr-chatbot-documents-ap-northeast-1",
+        description="S3 bucket name for document storage",
+    )
+    USE_PRESIGNED_URLS: bool = Field(
+        default=True,
+        description="Use S3 pre-signed URLs for direct client-to-S3 uploads (recommended for production)",
     )
 
     # ========== File Upload Configuration ==========

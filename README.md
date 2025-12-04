@@ -86,7 +86,7 @@ python scripts/generate_secret_key.py
 ```
 用戶 (HTTPS)
   ↓
-Amazon Route 53 (DNS: *.goingcloud.ai)
+Amazon Route 53 (DNS: *.going.cloud)
   ↓
 Amazon API Gateway (SSL via ACM)
   ↓

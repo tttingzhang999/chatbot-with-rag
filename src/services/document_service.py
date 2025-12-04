@@ -107,8 +107,11 @@ class DocumentProcessor:
         """
         Extract text content from document.
 
+        Supports both local file paths and S3 URIs (s3://bucket/key).
+        For S3 paths, downloads to temp file, extracts text, and cleans up.
+
         Args:
-            file_path: Path to the file
+            file_path: Path to the file (local or s3://bucket/key)
             file_type: Type of file (pdf, docx, txt)
 
         Returns:
@@ -118,10 +121,62 @@ class DocumentProcessor:
             FileNotFoundError: If file doesn't exist
             ValueError: If file type is unsupported
         """
+        # Check if this is an S3 path
+        if file_path.startswith("s3://"):
+            import tempfile
+
+            import boto3
+
+            from src.core.config import settings
+
+            # Parse S3 path
+            s3_path_parts = file_path[5:].split("/", 1)
+            if len(s3_path_parts) != 2:
+                raise ValueError(f"Invalid S3 path format: {file_path}")
+
+            bucket_name = s3_path_parts[0]
+            s3_key = s3_path_parts[1]
+
+            # Download to temp file
+            s3_client = boto3.client("s3", region_name=settings.AWS_REGION)
+            temp_file = tempfile.mktemp(suffix=f".{file_type}", dir="/tmp")
+
+            try:
+                logger.info(f"Downloading {file_path} to {temp_file} for text extraction")
+                s3_client.download_file(bucket_name, s3_key, temp_file)
+
+                # Extract text from temp file
+                file_type_lower = file_type.lower()
+                text = self._extract_text_from_local_file(temp_file, file_type_lower)
+
+                return text
+            finally:
+                # Clean up temp file
+                if os.path.exists(temp_file):
+                    try:
+                        os.unlink(temp_file)
+                        logger.debug(f"Cleaned up temp file: {temp_file}")
+                    except Exception as e:
+                        logger.warning(f"Failed to delete temp file {temp_file}: {e}")
+
+        # Local file path
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
 
         file_type = file_type.lower()
+        return self._extract_text_from_local_file(file_path, file_type)
+
+    def _extract_text_from_local_file(self, file_path: str, file_type: str) -> str:
+        """
+        Internal method to extract text from a local file.
+
+        Args:
+            file_path: Local file path
+            file_type: File type (pdf, docx, txt)
+
+        Returns:
+            Extracted text content
+        """
 
         try:
             if file_type == "txt":
