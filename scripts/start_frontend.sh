@@ -16,7 +16,6 @@ fi
 echo "=========================================="
 echo "Starting Gradio Frontend"
 echo "=========================================="
-echo "Frontend URL: http://localhost:${GRADIO_PORT:-7860}"
 echo "Backend API:  ${BACKEND_API_URL:-http://localhost:8000}"
 echo "=========================================="
 echo ""

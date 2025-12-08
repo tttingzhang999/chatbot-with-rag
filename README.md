@@ -374,8 +374,6 @@ cp .env.example .env
 | `UVICORN_HOST` | FastAPI 伺服器主機 | `0.0.0.0` |
 | `UVICORN_PORT` | FastAPI 伺服器埠號 | `8000` |
 | `UVICORN_RELOAD` | 自動重新載入 | `false` |
-| `GRADIO_HOST` | Gradio 前端主機 | `0.0.0.0` |
-| `GRADIO_PORT` | Gradio 前端埠號 | `7860` |
 
 **API 設定**
 | 變數名稱 | 說明 | 預設值 |
