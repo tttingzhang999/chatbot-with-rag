@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] 2025-12-08 - Frontend Migration to React + CloudFront
+
+### Changed
+
+- **Frontend Architecture:** Migrated frontend from Gradio (Python) hosted on App Runner to a static React app delivered via AWS CloudFront.
+  - All user-facing UI functionality now implemented in React for improved performance, scalability, and maintainability.
+  - Static assets deployed to S3 and served globally using CloudFront with best-practice caching and HTTPS.
+  - Eliminated Python/Gradio frontend container, reducing cold start times and operational costs.
+
+### Added
+
+- **React Frontend Build & Deploy Pipeline:**
+  - New `/frontend` directory with modern React app (Vite, TypeScript, etc.).
+  - Automated build & deployment scripts: run `npm run build` to produce static assets; deploy to S3 bucket configured for CloudFront.
+  - CloudFront distribution, S3 bucket, deployment automation defined in Terraform (`cloudfront.tf`, `s3_frontend.tf`).
+  - Updated README with instructions for local development, build, and AWS deployment.
+
+- **Frontend Environment Configuration:**
+  - `.env.example` updated with `VITE_BACKEND_API_URL` and bucket/distribution URLs for local/production builds.
+  - Secure CORS settings on backend to allow CloudFront/React domain.
+  - Static asset URLs and API base updated throughout the app.
+
+### Removed
+
+- **Legacy Gradio App:**
+  - Removed all Gradio-related frontend code and Docker configuration.
+  - Deleted `src/app.py` (frontend), `scripts/start_frontend.sh`.
+  - Updated deployment and startup scripts to reflect removal of Gradio and App Runner from the frontend.
+  - Cleaned up related dependencies from `requirements.txt`/`uv.lock`.
+
+### Migration & Usage Notes
+
+- To develop locally: `cd frontend && npm install && npm run dev`.
+- To deploy: `npm run build`, then run deployment script or CI/CD to upload to S3 and invalidate CloudFront cache.
+- App Runner is now only used for the backend API; frontend is served from CloudFront S3 distribution.
+- Review updated infrastructure docs and Terraform modules before updating production.
+
+### See Also
+
+- `/frontend/README.md` for app structure and deployment.
+- `/terraform/cloudfront.tf`, `/terraform/s3_frontend.tf` for infrastructure.
+- `.env.example` for new config keys.
+
 ## [0.8.0] 2025-12-03 - AWS Terraform Infrastructure: VPC, DB, Lambda, App Runner
 
 ### Added

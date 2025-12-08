@@ -1,5 +1,6 @@
 import { Moon, Sun, Monitor } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,6 +11,17 @@ import {
 
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme();
+
+  useEffect(() => {
+    // Add transition class to document element
+    const root = document.documentElement;
+    root.classList.add('theme-transition');
+
+    // Cleanup function to remove transition class
+    return () => {
+      root.classList.remove('theme-transition');
+    };
+  }, []);
 
   return (
     <DropdownMenu>

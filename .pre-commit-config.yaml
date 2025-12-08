@@ -65,6 +65,12 @@ repos:
         types_or: [markdown, yaml, json]
         exclude: ^(alembic/|apps/backend/alembic/|\.venv/|node_modules/)
 
+  # Check for secrets in the code
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.2
+    hooks:
+      - id: gitleaks
+
 # Configure pre-commit.ci (optional)
 ci:
   autofix_commit_msg: |
