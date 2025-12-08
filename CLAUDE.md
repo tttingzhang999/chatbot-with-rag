@@ -45,7 +45,6 @@ User Question → Question Embedding → Hybrid Search (Aurora) → Context Retr
 - **AI/ML**: Amazon Bedrock (Claude Sonnet 4, Cohere Embed v4)
 - **Network**: API Gateway, Route 53 (\*.going.cloud), Certificate Manager
 - **Security**: Secrets Manager (DB credentials), IAM
-- **Frontend**: Gradio interface
 
 ## Development Commands
 

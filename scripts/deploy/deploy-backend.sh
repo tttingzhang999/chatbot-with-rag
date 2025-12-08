@@ -5,28 +5,28 @@
 
 set -e  # Exit on error
 
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+
+# Load configuration from config.sh
+source "${SCRIPT_DIR}/config.sh"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Configuration
-AWS_ACCOUNT_ID="593713876380"
-AWS_REGION="ap-northeast-1"
-ECR_REPOSITORY="ting-assignment/hr-chatbot-backend"
-IMAGE_TAG="latest"
-LAMBDA_FUNCTION_NAME="hr-chatbot-backend"
-AWS_PROFILE="tf-gc-playground"
-
-# Derived values
-ECR_IMAGE_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}"
-DOCKERFILE_PATH="../../infrastructure/docker/Dockerfile.backend"
+# Dockerfile path
+DOCKERFILE_PATH="${PROJECT_ROOT}/infrastructure/docker/Dockerfile.backend"
 
 echo -e "${GREEN}=== HR Chatbot Backend Deployment ===${NC}"
-echo -e "ECR Repository: ${ECR_REPOSITORY}"
-echo -e "Image Tag: ${IMAGE_TAG}"
+echo -e "ECR Repository: ${LAMBDA_ECR_REPOSITORY}"
+echo -e "Image Tag: ${LAMBDA_IMAGE_TAG}"
 echo -e "Lambda Function: ${LAMBDA_FUNCTION_NAME}"
+echo -e "Region: ${AWS_REGION}"
+echo -e "Profile: ${AWS_PROFILE}"
 
 # Step 1: Login to ECR
 echo -e "\n${YELLOW}Step 1: Logging into ECR...${NC}"
@@ -43,15 +43,17 @@ echo -e "${GREEN}ECR login successful!${NC}"
 # Step 2: Build Docker image
 echo -e "\n${YELLOW}Step 2: Building Docker image...${NC}"
 echo -e "Dockerfile: ${DOCKERFILE_PATH}"
-echo -e "Build context: $(pwd)"
+echo -e "Build context: ${PROJECT_ROOT}"
 
-docker build \
+# Use docker buildx for proper platform support
+docker buildx build \
   -f "${DOCKERFILE_PATH}" \
   --target backend \
   --platform linux/arm64 \
   --provenance=false \
+  --load \
   -t "${ECR_IMAGE_URI}" \
-  .
+  "${PROJECT_ROOT}"
 
 if [ $? -ne 0 ]; then
   echo -e "${RED}Error: Docker build failed${NC}"
@@ -100,4 +102,4 @@ echo -e "Image URI: ${ECR_IMAGE_URI}"
 echo -e "Lambda Function: ${LAMBDA_FUNCTION_NAME}"
 echo -e "Region: ${AWS_REGION}"
 echo -e "\n${YELLOW}Note: Lambda environment variables are managed by Terraform.${NC}"
-echo -e "${YELLOW}Run 'cd ../../infrastructure/terraform && terraform apply' to update env vars.${NC}"
+echo -e "${YELLOW}Run 'cd infrastructure/terraform && terraform apply' to update env vars.${NC}"

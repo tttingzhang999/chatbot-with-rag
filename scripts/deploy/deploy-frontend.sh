@@ -5,19 +5,36 @@
 
 set -e  # Exit on error
 
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+FRONTEND_DIR="${PROJECT_ROOT}/apps/frontend"
+
+# Load configuration from config.sh
+source "${SCRIPT_DIR}/config.sh"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Configuration
-S3_BUCKET="ting-hr-chatbot-frontend"
-CLOUDFRONT_DISTRIBUTION_ID="E1Z936WWRGHR1"
-AWS_PROFILE="tf-gc-playground"
-AWS_REGION="ap-northeast-1"
-
 echo -e "${GREEN}=== HR Chatbot Frontend Deployment ===${NC}"
+echo -e "S3 Bucket: ${S3_BUCKET}"
+echo -e "CloudFront Distribution: ${CLOUDFRONT_DISTRIBUTION_ID}"
+echo -e "Frontend URL: ${FRONTEND_URL}"
+echo -e "Region: ${AWS_REGION}"
+echo -e "Profile: ${AWS_PROFILE}"
+
+# Validate that Terraform outputs are available
+if [ -z "$S3_BUCKET" ] || [ -z "$CLOUDFRONT_DISTRIBUTION_ID" ]; then
+  echo -e "${RED}Error: Required Terraform outputs not found${NC}"
+  echo -e "${YELLOW}Please run 'cd infrastructure/terraform && terraform apply' first${NC}"
+  exit 1
+fi
+
+# Change to frontend directory
+cd "${FRONTEND_DIR}"
 
 # Step 1: Install dependencies
 echo -e "\n${YELLOW}Step 1: Installing dependencies...${NC}"
@@ -63,25 +80,21 @@ fi
 echo -e "${GREEN}Files uploaded to S3 successfully!${NC}"
 
 # Step 4: Invalidate CloudFront cache
-if [ -n "${CLOUDFRONT_DISTRIBUTION_ID}" ]; then
-  echo -e "\n${YELLOW}Step 4: Invalidating CloudFront cache...${NC}"
-  INVALIDATION_ID=$(aws cloudfront create-invalidation \
-    --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" \
-    --paths "/*" \
-    --profile "${AWS_PROFILE}" \
-    --query 'Invalidation.Id' \
-    --output text)
+echo -e "\n${YELLOW}Step 4: Invalidating CloudFront cache...${NC}"
+INVALIDATION_ID=$(aws cloudfront create-invalidation \
+  --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" \
+  --paths "/*" \
+  --profile "${AWS_PROFILE}" \
+  --query 'Invalidation.Id' \
+  --output text)
 
-  echo -e "${GREEN}CloudFront invalidation created: ${INVALIDATION_ID}${NC}"
-  echo -e "${YELLOW}Note: Invalidation may take a few minutes to complete.${NC}"
-else
-  echo -e "\n${YELLOW}Warning: CLOUDFRONT_DISTRIBUTION_ID not set. Skipping cache invalidation.${NC}"
-  echo -e "${YELLOW}Run 'terraform output cloudfront_distribution_id' to get the ID and update this script.${NC}"
-fi
+echo -e "${GREEN}CloudFront invalidation created: ${INVALIDATION_ID}${NC}"
+echo -e "${YELLOW}Note: Invalidation may take a few minutes to complete.${NC}"
 
 # Step 5: Display deployment summary
 echo -e "\n${GREEN}=== Deployment Complete ===${NC}"
-echo -e "Website URL: ${GREEN}https://ting-hr-chatbot.goingcloud.ai${NC}"
+echo -e "Website URL: ${GREEN}${FRONTEND_URL}${NC}"
 echo -e "S3 Bucket: ${S3_BUCKET}"
+echo -e "CloudFront Distribution: ${CLOUDFRONT_DISTRIBUTION_ID}"
 echo -e "Region: ${AWS_REGION}"
 echo -e "\n${YELLOW}Note: If this is your first deployment, DNS propagation may take a few minutes.${NC}"

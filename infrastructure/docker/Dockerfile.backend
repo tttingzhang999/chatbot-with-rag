@@ -41,8 +41,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install -r requirements.txt --target "${LAMBDA_TASK_ROOT}"
 
 # Copy application code to LAMBDA_TASK_ROOT (from apps/backend)
-COPY apps/backend/src/ "${LAMBDA_TASK_ROOT}/src/"
-COPY apps/backend/alembic/ "${LAMBDA_TASK_ROOT}/alembic/"
+# Exclude __pycache__ and .pyc files to prevent local bytecode conflicts
+COPY --exclude=**/__pycache__ --exclude=**/*.pyc apps/backend/src/ "${LAMBDA_TASK_ROOT}/src/"
+COPY --exclude=**/__pycache__ --exclude=**/*.pyc apps/backend/alembic/ "${LAMBDA_TASK_ROOT}/alembic/"
 COPY apps/backend/alembic.ini "${LAMBDA_TASK_ROOT}/"
 COPY apps/backend/backend_entrypoint.py "${LAMBDA_TASK_ROOT}/"
 

@@ -6,6 +6,7 @@ This guide will help you deploy the HR Chatbot infrastructure to your own AWS ac
 
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
+- [Deployment Scripts](#deployment-scripts)
 - [Configuration Reference](#configuration-reference)
 - [Account Setup Options](#account-setup-options)
 - [Troubleshooting](#troubleshooting)
@@ -221,6 +222,140 @@ frontend_url = "https://hr-chatbot.example.com"
 ```
 
 Visit the frontend URL to verify your deployment.
+
+## Deployment Scripts
+
+After setting up your Terraform infrastructure, use these automated deployment scripts to deploy your application code.
+
+### Prerequisites
+
+All deployment scripts automatically read configuration from your `terraform.tfvars` and Terraform outputs, so you don't need to hardcode any sensitive information.
+
+**Required:**
+
+- Terraform infrastructure deployed (`terraform apply` completed)
+- AWS CLI configured with appropriate profile
+- Docker installed (for backend deployment)
+- Node.js and npm installed (for frontend deployment)
+
+### Deploy Backend (Lambda)
+
+Deploy the backend Lambda function to AWS:
+
+```bash
+# From project root
+./scripts/deploy/deploy-backend.sh
+```
+
+**What it does:**
+
+1. Reads configuration from `infrastructure/terraform/terraform.tfvars`
+2. Logs into AWS ECR
+3. Builds Docker image for Lambda (arm64 architecture)
+4. Pushes image to ECR
+5. Updates Lambda function with new image
+6. Waits for deployment to complete
+
+**Configuration source:**
+
+- `aws_account_id`, `aws_region`, `aws_profile` - from `terraform.tfvars`
+- `lambda_ecr_repository`, `lambda_image_tag` - from `terraform.tfvars`
+- Lambda function name - constructed from `project_prefix` and `project_name`
+
+### Deploy Frontend (S3/CloudFront)
+
+Deploy the frontend React application to S3 and CloudFront:
+
+```bash
+# From project root
+./scripts/deploy/deploy-frontend.sh
+```
+
+**What it does:**
+
+1. Reads configuration from Terraform outputs
+2. Installs npm dependencies
+3. Builds React application
+4. Uploads static assets to S3 with cache optimization
+5. Invalidates CloudFront cache for immediate updates
+
+**Configuration source:**
+
+- S3 bucket name - from `terraform output s3_bucket_name`
+- CloudFront distribution ID - from `terraform output cloudfront_distribution_id`
+- AWS credentials - from `terraform.tfvars`
+
+### Configuration Helper
+
+Both scripts use a shared configuration helper (`scripts/deploy/config.sh`) that:
+
+- Reads values from `terraform.tfvars`
+- Fetches Terraform outputs
+- Validates required configuration
+- Exports environment variables for use by deployment scripts
+
+**Benefits:**
+
+- ✅ No hardcoded credentials or sensitive information
+- ✅ Single source of truth (Terraform configuration)
+- ✅ Automatic validation of required variables
+- ✅ Consistent naming conventions across scripts
+
+### Deployment Workflow
+
+Typical deployment workflow:
+
+```bash
+# 1. Deploy infrastructure (first time or when infrastructure changes)
+cd infrastructure/terraform
+terraform apply -var-file=terraform.tfvars
+
+# 2. Deploy backend code
+cd ../..
+./scripts/deploy/deploy-backend.sh
+
+# 3. Deploy frontend code
+./scripts/deploy/deploy-frontend.sh
+```
+
+### Troubleshooting Deployment Scripts
+
+**Error: "terraform.tfvars not found"**
+
+```bash
+# Solution: Create terraform.tfvars from example
+cd infrastructure/terraform
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your values
+```
+
+**Error: "Terraform output not found"**
+
+```bash
+# Solution: Run terraform apply first
+cd infrastructure/terraform
+terraform apply -var-file=terraform.tfvars
+```
+
+**Error: "Docker build failed"**
+
+```bash
+# Solution: Verify Dockerfile exists
+ls infrastructure/docker/Dockerfile.backend
+
+# Check Docker is running
+docker ps
+```
+
+**Error: "ECR authentication failed"**
+
+```bash
+# Solution: Verify AWS credentials
+aws sts get-caller-identity --profile your-profile-name
+
+# Or with aws-vault
+aws-vault exec your-profile-name -- aws sts get-caller-identity
+```
 
 ## Configuration Reference
 
