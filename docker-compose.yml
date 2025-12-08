@@ -1,0 +1,86 @@
+version: "3.8"
+
+# Production-Ready Docker Compose Configuration
+# This setup simulates the production environment for local testing
+# NO hot-reload - changes require rebuild
+
+services:
+  # PostgreSQL with pgvector extension
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: hr-chatbot-db
+    environment:
+      POSTGRES_DB: hr_chatbot
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432" # Host:Container - Use 5433 to avoid conflict with local PostgreSQL
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hr-chatbot-network
+
+  # Backend (Production Mode - NO hot-reload)
+  # Run with: aws-vault exec <profile> -- docker-compose up --build
+  backend:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.backend
+      target: runtime-base
+    container_name: hr-chatbot-backend
+    entrypoint: ["/bin/bash"]
+    command: ["/scripts/start-backend.sh"]
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount startup script
+      - ./scripts/docker/start-backend.sh:/scripts/start-backend.sh:ro
+      # Mount local uploads directory for file storage
+      - ./uploads:/var/task/uploads
+    environment:
+      # Override DATABASE_URL for Docker network
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/hr_chatbot
+      UVICORN_RELOAD: "false" # NO hot-reload in production mode
+      # Use local file storage instead of S3 presigned URLs
+      USE_PRESIGNED_URLS: "false"
+      UPLOAD_DIR: /var/task/uploads
+      # Enable RAG functionality
+      ENABLE_RAG: "true"
+      # AWS credentials are injected by aws-vault from host environment
+      AWS_REGION: ${AWS_REGION:-ap-northeast-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - hr-chatbot-network
+
+  # Frontend (Production Mode - Static files with Nginx)
+  frontend:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.frontend
+      args:
+        # Build-time env var for API URL
+        VITE_API_BASE_URL: http://localhost:8000
+    container_name: hr-chatbot-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - hr-chatbot-network
+
+volumes:
+  postgres_data:
+
+networks:
+  hr-chatbot-network:
+    driver: bridge

@@ -2,7 +2,7 @@
 # Using a different AWS account/profile for Route 53 management
 data "aws_route53_zone" "goingcloud" {
   provider = aws.route53
-  zone_id  = "Z085163319K6AHT4RRWR4"
+  zone_id  = var.route53_hosted_zone_id
 }
 
 # Note: API Gateway certificate and DNS records are defined in api_gateway.tf
@@ -11,18 +11,14 @@ data "aws_route53_zone" "goingcloud" {
 # ACM Certificate for CloudFront (must be in us-east-1)
 resource "aws_acm_certificate" "frontend" {
   provider          = aws.us-east-1
-  domain_name       = "ting-hr-chatbot.goingcloud.ai"
+  domain_name       = local.frontend_domain
   validation_method = "DNS"
 
   lifecycle {
     create_before_destroy = true
   }
 
-  tags = {
-    Owner     = "TingZhang"
-    Retention = "2025-12-31"
-    Project   = "hr-chatbot"
-  }
+  tags = local.common_tags
 }
 
 # DNS record for frontend certificate validation
@@ -56,7 +52,7 @@ resource "aws_acm_certificate_validation" "frontend" {
 resource "aws_route53_record" "frontend" {
   provider = aws.route53
   zone_id  = data.aws_route53_zone.goingcloud.zone_id
-  name     = "ting-hr-chatbot.goingcloud.ai"
+  name     = local.frontend_domain
   type     = "A"
 
   alias {
@@ -70,7 +66,7 @@ resource "aws_route53_record" "frontend" {
 resource "aws_route53_record" "frontend_ipv6" {
   provider = aws.route53
   zone_id  = data.aws_route53_zone.goingcloud.zone_id
-  name     = "ting-hr-chatbot.goingcloud.ai"
+  name     = local.frontend_domain
   type     = "AAAA"
 
   alias {

@@ -1,16 +1,20 @@
 """
-File upload routes with pre-signed URL support.
+File upload routes with pre-signed URL support and local storage fallback.
 
 This module provides endpoints for:
-1. Generating pre-signed S3 URLs for direct client-to-S3 uploads
-2. Triggering document processing after S3 upload completes
-3. Managing documents (list, delete)
+1. Generating pre-signed S3 URLs for direct client-to-S3 uploads (if USE_PRESIGNED_URLS=True)
+2. Direct file upload to local storage (if USE_PRESIGNED_URLS=False)
+3. Triggering document processing after upload completes
+4. Managing documents (list, delete)
 """
 
 import logging
+import os
+import shutil
 import uuid
+from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile, status
 from pydantic import BaseModel, Field
 
 from src.api.deps import CurrentUser, DBSession
@@ -87,84 +91,119 @@ class DeleteResponse(BaseModel):
     message: str
 
 
+class ConfigResponse(BaseModel):
+    """Configuration response model."""
+
+    use_presigned_urls: bool = Field(..., description="Whether to use S3 presigned URLs")
+
+
+class LocalUploadResponse(BaseModel):
+    """Response model for local file upload."""
+
+    document_id: str = Field(..., description="UUID of the created document record")
+    status: str = Field(..., description="Upload and processing status")
+    message: str = Field(..., description="Status message")
+
+
+# ========== Helper Functions ==========
+
+
+def ensure_upload_directory() -> Path:
+    """
+    Ensure upload directory exists.
+
+    Returns:
+        Path object for the upload directory
+
+    Raises:
+        RuntimeError: If directory cannot be created
+    """
+    upload_dir = Path(settings.UPLOAD_DIR)
+    try:
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        logger.debug(f"Upload directory ensured: {upload_dir}")
+        return upload_dir
+    except Exception as e:
+        logger.error(f"Failed to create upload directory {upload_dir}: {e}")
+        raise RuntimeError(f"Failed to create upload directory: {e}")
+
+
 # ========== Background Processing ==========
 
 
 def process_uploaded_document(
     document_id: uuid.UUID,
-    s3_path: str,
+    file_path: str,
     file_type: str,
     db_url: str,
 ) -> None:
     """
-    Background task to process document from S3.
+    Background task to process document from S3 or local storage.
 
     This function:
-    1. Downloads file from S3 to /tmp
-    2. Creates new database session
-    3. Calls DocumentProcessor.process_document_sync()
-    4. Updates document status on success or failure
-    5. Cleans up temp file
+    1. For S3 paths: Downloads file from S3 to /tmp
+    2. For local paths: Uses file directly
+    3. Creates new database session
+    4. Calls DocumentProcessor.process_document_sync()
+    5. Updates document status on success or failure
+    6. Cleans up temp file (for S3 only, local files are kept)
 
     Args:
         document_id: Document UUID
-        s3_path: S3 URI (s3://bucket/key)
+        file_path: S3 URI (s3://bucket/key) or local file path
         file_type: File extension
         db_url: Database URL for creating new session
     """
-    import os
     import tempfile
 
     import boto3
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
-    temp_file = None
+    temp_file_path = None
+    is_s3_file = file_path.startswith("s3://")
 
     try:
         logger.info(f"Background processing started for document: {document_id}")
 
-        # Parse S3 path (s3://bucket/key)
-        if not s3_path.startswith("s3://"):
-            raise ValueError(f"Invalid S3 path format: {s3_path}")
+        # Handle S3 files - download to temp location
+        if is_s3_file:
+            # Parse S3 path (s3://bucket/key)
+            s3_path_parts = file_path[5:].split("/", 1)
+            if len(s3_path_parts) != 2:
+                raise ValueError(f"Invalid S3 path format: {file_path}")
 
-        s3_path_parts = s3_path[5:].split("/", 1)
-        if len(s3_path_parts) != 2:
-            raise ValueError(f"Invalid S3 path format: {s3_path}")
+            bucket_name = s3_path_parts[0]
+            s3_key = s3_path_parts[1]
 
-        bucket_name = s3_path_parts[0]
-        s3_key = s3_path_parts[1]
+            # Download file from S3 to temp location
+            s3_client = boto3.client("s3", region_name=settings.AWS_REGION)
+            # Use NamedTemporaryFile for secure temp file creation
+            with tempfile.NamedTemporaryFile(suffix=f".{file_type}", delete=False) as temp_file:
+                temp_file_path = temp_file.name
 
-        # Download file from S3 to temp location
-        s3_client = boto3.client("s3", region_name=settings.AWS_REGION)
-        # Use NamedTemporaryFile for secure temp file creation
-        with tempfile.NamedTemporaryFile(suffix=f".{file_type}", delete=False) as temp_file:
-            temp_file_path = temp_file.name
+            logger.info(f"Downloading {file_path} to {temp_file_path}")
+            s3_client.download_file(bucket_name, s3_key, temp_file_path)
+            processing_file_path = temp_file_path
+        else:
+            # Local file - use directly
+            if not os.path.exists(file_path):
+                raise FileNotFoundError(f"Local file not found: {file_path}")
+            processing_file_path = file_path
+            logger.info(f"Processing local file: {file_path}")
+
+        # Create new database session for background task
+        engine = create_engine(db_url)
+        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        db = SessionLocal()
 
         try:
-            logger.info(f"Downloading {s3_path} to {temp_file_path}")
-            s3_client.download_file(bucket_name, s3_key, temp_file_path)
-
-            # Create new database session for background task
-            engine = create_engine(db_url)
-            SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-            db = SessionLocal()
-
-            try:
-                # Process document
-                processor = DocumentProcessor(db)
-                result = processor.process_document_sync(document_id, temp_file_path, file_type)
-                logger.info(f"Document processed successfully: {result}")
-            finally:
-                db.close()
+            # Process document
+            processor = DocumentProcessor(db)
+            result = processor.process_document_sync(document_id, processing_file_path, file_type)
+            logger.info(f"Document processed successfully: {result}")
         finally:
-            # Clean up temp file
-            if os.path.exists(temp_file_path):
-                try:
-                    os.unlink(temp_file_path)
-                    logger.debug(f"Cleaned up temp file: {temp_file_path}")
-                except Exception as e:
-                    logger.warning(f"Failed to delete temp file {temp_file_path}: {e}")
+            db.close()
 
     except Exception as e:
         logger.error(f"Background processing failed for document {document_id}: {e}", exc_info=True)
@@ -186,16 +225,131 @@ def process_uploaded_document(
             logger.error(f"Failed to update document status: {update_error}")
 
     finally:
-        # Clean up temp file
-        if temp_file and os.path.exists(temp_file):
+        # Clean up temp file (only for S3 downloads)
+        if temp_file_path and os.path.exists(temp_file_path):
             try:
-                os.unlink(temp_file)
-                logger.info(f"Cleaned up temp file: {temp_file}")
+                os.unlink(temp_file_path)
+                logger.debug(f"Cleaned up temp file: {temp_file_path}")
             except Exception as cleanup_error:
-                logger.warning(f"Failed to delete temp file {temp_file}: {cleanup_error}")
+                logger.warning(f"Failed to delete temp file {temp_file_path}: {cleanup_error}")
 
 
 # ========== API Endpoints ==========
+
+
+@router.get("/config", response_model=ConfigResponse)
+def get_upload_config() -> ConfigResponse:
+    """
+    Get upload configuration to determine upload mode.
+
+    Returns:
+        ConfigResponse: Upload configuration including USE_PRESIGNED_URLS setting
+    """
+    return ConfigResponse(use_presigned_urls=settings.USE_PRESIGNED_URLS)
+
+
+@router.post("/local", response_model=LocalUploadResponse)
+async def upload_local_file(
+    file: UploadFile = File(...),
+    current_user: CurrentUser = None,
+    background_tasks: BackgroundTasks = None,
+    db: DBSession = None,
+) -> LocalUploadResponse:
+    """
+    Upload file to local storage and trigger processing.
+
+    This endpoint is used when USE_PRESIGNED_URLS=False.
+    It saves the file to local storage and immediately triggers processing.
+
+    Args:
+        file: Uploaded file
+        current_user: Current authenticated user
+        background_tasks: FastAPI background tasks
+        db: Database session
+
+    Returns:
+        LocalUploadResponse: Upload status and document ID
+    """
+    try:
+        # Validate file type
+        if not file.filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Filename is required",
+            )
+
+        file_extension = file.filename.split(".")[-1].lower()
+        if file_extension not in settings.SUPPORTED_FILE_TYPES:
+            supported_types = ", ".join(settings.SUPPORTED_FILE_TYPES)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unsupported file type: {file_extension}. Supported: {supported_types}",
+            )
+
+        # Ensure upload directory exists
+        upload_dir = ensure_upload_directory()
+
+        # Create document record
+        document_id = uuid.uuid4()
+        unique_filename = f"{document_id}_{file.filename}"
+        file_path = upload_dir / unique_filename
+
+        # Save file to disk
+        try:
+            with file_path.open("wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            logger.info(f"Saved file to local storage: {file_path}")
+        except Exception as e:
+            logger.error(f"Failed to save file {file_path}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to save file: {str(e)}",
+            )
+
+        # Get file size
+        file_size = file_path.stat().st_size
+
+        # Create document record in database
+        document = Document(
+            id=document_id,
+            user_id=current_user.id,
+            file_name=file.filename,
+            file_path=str(file_path.absolute()),
+            file_type=file_extension,
+            file_size=file_size,
+            status="pending",
+        )
+        db.add(document)
+        db.commit()
+        db.refresh(document)
+
+        logger.info(f"Created document record: {document_id}")
+
+        # Trigger background processing immediately
+        background_tasks.add_task(
+            process_uploaded_document,
+            document_id=document_id,
+            file_path=str(file_path.absolute()),
+            file_type=file_extension,
+            db_url=settings.DATABASE_URL,
+        )
+
+        logger.info(f"Triggered processing for local file: {document_id}")
+
+        return LocalUploadResponse(
+            document_id=str(document_id),
+            status="processing",
+            message="File uploaded successfully and processing started",
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to upload local file: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to upload file: {str(e)}",
+        )
 
 
 @router.post("/presigned-url", response_model=PresignedUrlResponse)
@@ -339,18 +493,18 @@ def trigger_document_processing(
                 detail=f"Document is not in pending state (current: {document.status})",
             )
 
-        # Verify file path is S3 path
-        if not document.file_path.startswith("s3://"):
+        # Verify file path exists (S3 or local)
+        if not document.file_path:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Document does not have a valid S3 path",
+                detail="Document does not have a valid file path",
             )
 
         # Trigger background processing
         background_tasks.add_task(
             process_uploaded_document,
             document_id=doc_uuid,
-            s3_path=document.file_path,
+            file_path=document.file_path,
             file_type=document.file_type,
             db_url=settings.DATABASE_URL,
         )

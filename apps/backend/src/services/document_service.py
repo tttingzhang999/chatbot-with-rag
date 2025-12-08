@@ -11,7 +11,7 @@ import re
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.orm import Session
 
 from src.core.config import settings
@@ -607,8 +607,8 @@ class DocumentProcessor:
                     chunk_index=idx,
                     content=chunk_text,
                     embedding=embedding,
-                    # Note: content_tsvector will be set by database trigger
-                    # or we can use raw SQL: func.to_tsvector('english', chunk_text)
+                    # content_tsvector will be set via UPDATE after insert
+                    # Using 'simple' text search config for better Chinese support
                     chunk_metadata={
                         "char_count": len(chunk_text),
                         "word_count": len(chunk_text.split()),
@@ -616,8 +616,21 @@ class DocumentProcessor:
                 )
                 chunk_objects.append(chunk_obj)
 
-            # Bulk insert chunks
+            # Bulk insert chunks first
             self.db.add_all(chunk_objects)
+            self.db.flush()  # Flush to get IDs assigned
+
+            # Update content_tsvector for all chunks using raw SQL
+            # Use 'simple' text search config for better Chinese support
+            # 'simple' doesn't do stemming, which works better for Chinese text
+            for chunk_obj in chunk_objects:
+                self.db.execute(
+                    text(
+                        "UPDATE document_chunks SET content_tsvector = to_tsvector('simple', :content) WHERE id = :id"
+                    ),
+                    {"content": chunk_obj.content, "id": chunk_obj.id},
+                )
+
             self.db.commit()
 
             logger.info(f"Saved {len(chunk_objects)} chunks for document {document_id}")

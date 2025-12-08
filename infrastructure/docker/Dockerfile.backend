@@ -7,7 +7,7 @@
 #   --target backend        Build chatbot backend Lambda
 #
 # Build example:
-#   docker build -f Dockerfile.lambda --target backend -t hr-chatbot-backend .
+#   docker build -f Dockerfile.backend --target backend -t hr-chatbot-backend .
 #
 
 # ==============================================================================
@@ -31,8 +31,8 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 WORKDIR /build
 
-# Copy dependency files
-COPY pyproject.toml uv.lock README.md ./
+# Copy dependency files (from apps/backend in root context)
+COPY apps/backend/pyproject.toml apps/backend/uv.lock apps/backend/README.md ./
 
 # Export dependencies to requirements.txt and install to LAMBDA_TASK_ROOT
 # This follows official uv AWS Lambda guide
@@ -40,11 +40,11 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv export --frozen --no-emit-workspace --no-dev --no-editable -o requirements.txt && \
     uv pip install -r requirements.txt --target "${LAMBDA_TASK_ROOT}"
 
-# Copy application code to LAMBDA_TASK_ROOT
-COPY src/ "${LAMBDA_TASK_ROOT}/src/"
-COPY alembic/ "${LAMBDA_TASK_ROOT}/alembic/"
-COPY alembic.ini "${LAMBDA_TASK_ROOT}/"
-COPY backend_entrypoint.py "${LAMBDA_TASK_ROOT}/"
+# Copy application code to LAMBDA_TASK_ROOT (from apps/backend)
+COPY apps/backend/src/ "${LAMBDA_TASK_ROOT}/src/"
+COPY apps/backend/alembic/ "${LAMBDA_TASK_ROOT}/alembic/"
+COPY apps/backend/alembic.ini "${LAMBDA_TASK_ROOT}/"
+COPY apps/backend/backend_entrypoint.py "${LAMBDA_TASK_ROOT}/"
 
 # ==============================================================================
 # Stage 2: Runtime - Final Lambda image

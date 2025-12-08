@@ -1,0 +1,29 @@
+#=============================================================================
+# TERRAFORM BACKEND CONFIGURATION EXAMPLE
+# Copy this file to backend.tfvars and fill in your values
+# NEVER commit backend.tfvars to git - it contains sensitive information
+#
+# IMPORTANT: Backend configuration cannot use variables!
+# You must provide these values during terraform init:
+#   terraform init -backend-config=backend.tfvars
+#=============================================================================
+
+# S3 bucket name for storing Terraform state
+# Prerequisites: Create this S3 bucket before running terraform init
+# Recommended: Enable versioning and encryption on this bucket
+bucket = "my-terraform-state-bucket"
+
+# Path to the state file within the bucket
+# Use a meaningful path like: "username/project-name.tfstate" or "team/project-name.tfstate"
+key = "username/hr-chatbot.tfstate"
+
+# AWS region where the S3 bucket is located
+region = "us-east-1"
+
+# AWS CLI profile name for accessing the backend bucket
+# This should match your aws_profile variable in terraform.tfvars
+profile = "default"
+
+# AWS Account ID(s) that are allowed to access this backend
+# This should match your aws_account_id variable in terraform.tfvars
+allowed_account_ids = ["123456789012"]

@@ -1,13 +1,13 @@
 # S3 bucket for React frontend static files
 resource "aws_s3_bucket" "frontend" {
-  bucket = "ting-hr-chatbot-frontend"
+  bucket = local.frontend_bucket_name
 
-  tags = {
-    Name      = "HR Chatbot Frontend"
-    Owner     = "TingZhang"
-    Retention = "2025-12-31"
-    Project   = "hr-chatbot"
-  }
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${var.project_name} Frontend"
+    }
+  )
 }
 
 # Block all public access to S3 bucket (CloudFront will access via OAC)
@@ -58,10 +58,10 @@ resource "aws_s3_bucket_policy" "frontend" {
 resource "aws_cloudfront_distribution" "frontend" {
   enabled             = true
   is_ipv6_enabled     = true
-  comment             = "HR Chatbot Frontend Distribution"
+  comment             = "${var.project_name} Frontend Distribution"
   default_root_object = "index.html"
-  aliases             = ["ting-hr-chatbot.goingcloud.ai"]
-  price_class         = "PriceClass_200" # US, Europe, Asia, Middle East, and Africa
+  aliases             = [local.frontend_domain]
+  price_class         = var.cloudfront_price_class
 
   # S3 Origin
   origin {
@@ -138,10 +138,10 @@ resource "aws_cloudfront_distribution" "frontend" {
     response_page_path = "/index.html"
   }
 
-  tags = {
-    Name      = "HR Chatbot Frontend Distribution"
-    Owner     = "TingZhang"
-    Retention = "2025-12-31"
-    Project   = "hr-chatbot"
-  }
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${var.project_name} Frontend Distribution"
+    }
+  )
 }

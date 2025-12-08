@@ -1,11 +1,8 @@
 # S3 bucket for document uploads
 resource "aws_s3_bucket" "example" {
-  bucket = "hr-chatbot-documents-ap-northeast-1"
+  bucket = local.documents_bucket_name
 
-  tags = {
-    Owner     = "TingZhang"
-    Retention = "2025-12-31"
-  }
+  tags = local.common_tags
 }
 
 # CORS configuration for direct browser uploads to S3 (presigned URLs)
@@ -16,7 +13,7 @@ resource "aws_s3_bucket_cors_configuration" "example" {
     allowed_headers = ["*"]
     allowed_methods = ["GET", "POST", "PUT"]
     allowed_origins = [
-      "https://ting-hr-chatbot.goingcloud.ai", # Production frontend (CloudFront)
+      "https://${local.frontend_domain}", # Production frontend (CloudFront)
     ]
     expose_headers  = ["ETag"]
     max_age_seconds = 3000

@@ -68,25 +68,96 @@ aws-vault add <profile-name>
 aws-vault exec <profile-name> -- aws s3 ls
 ```
 
-### Local Development (Without AWS)
+## Local Development Modes
 
-For local development without AWS services:
+The project supports two development modes:
+
+### Mode 1: Native Development (Recommended for Active Development)
+
+For fast development with hot-reload:
 
 ```bash
-# Initialize database
-./scripts/init_db.sh
+# Prerequisites: PostgreSQL installed and running locally, aws-vault configured
 
-# Start FastAPI backend (Terminal 1)
-./scripts/start_backend.sh
-# or: python -m uvicorn src.main:app --reload --port 8000
+# 1. Initialize database (first time only)
+./scripts/local/init-db.sh
 
-# Start Gradio frontend (Terminal 2)
-./scripts/start_frontend.sh
-# or: python src/app.py
+# 2. Start backend with aws-vault (Terminal 1)
+./scripts/local/start-backend.sh <aws-profile>
 
-# Test API
-python scripts/test_api.py
+# 3. Start frontend (Terminal 2)
+./scripts/local/start-frontend.sh
+
+# Access:
+# - Frontend: http://localhost:5173 (Vite dev server with HMR)
+# - Backend: http://localhost:8000 (FastAPI with --reload)
+# - API Docs: http://localhost:8000/docs
 ```
+
+**Features:**
+
+- ✅ Hot-reload for both frontend and backend
+- ✅ Fast startup time
+- ✅ Instant feedback on code changes
+- ✅ Uses local PostgreSQL database
+- ✅ Secure AWS credentials via aws-vault
+
+**Environment Setup:**
+
+- Backend: `.env` (root) + aws-vault for AWS credentials
+- Frontend: `apps/frontend/.env.local`
+
+**aws-vault Setup:**
+
+```bash
+# Install aws-vault
+brew install aws-vault  # macOS
+
+# Configure profile
+aws-vault add <profile-name>
+# Enter AWS Access Key ID and Secret Access Key when prompted
+
+# Verify setup
+aws-vault exec <profile-name> -- aws sts get-caller-identity
+```
+
+### Mode 2: Docker Compose (Production-Ready Testing)
+
+For testing production behavior locally:
+
+```bash
+# 1. Configure environment (first time only)
+cp .env.example .env
+
+# 2. Start all services with aws-vault (database + backend + frontend)
+aws-vault exec <profile-name> -- docker-compose up --build
+
+# Access:
+# - Frontend: http://localhost:5173 (Nginx static files)
+# - Backend: http://localhost:8000 (Uvicorn production mode)
+# - API Docs: http://localhost:8000/docs
+
+# 3. Stop services
+docker-compose down
+```
+
+**Features:**
+
+- ✅ Simulates production environment
+- ✅ No hot-reload (like production)
+- ✅ Frontend served as static files via Nginx
+- ✅ Backend runs without --reload flag
+- ✅ Uses Docker PostgreSQL container
+- ✅ AWS credentials securely injected via aws-vault
+- ✅ Uses local file storage (no S3 presigned URLs needed)
+
+**File Storage:**
+
+- Files are stored locally in `./uploads` directory (mounted to container)
+- No CORS configuration needed for S3
+- Production deployment will use S3 with presigned URLs
+
+**IMPORTANT**: Code changes require rebuild (`aws-vault exec <profile> -- docker-compose up --build`)
 
 See [`docs/local_development.md`](./docs/local_development.md) for detailed local development guide.
 
@@ -145,20 +216,29 @@ ruff format .
 pre-commit run --all-files
 ```
 
-### Docker Workflow
+### Deployment to AWS
+
+The project includes automated deployment scripts for backend and frontend:
+
+**Deploy Backend (Lambda):**
 
 ```bash
-# Build Docker image
-docker build -t hr-chatbot:latest .
-
-# Test locally
-docker run -p 8080:8080 hr-chatbot:latest
-
-# Push to ECR
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <account-id>.dkr.ecr.us-east-1.amazonaws.com
-docker tag hr-chatbot:latest <account-id>.dkr.ecr.us-east-1.amazonaws.com/hr-chatbot:latest
-docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/hr-chatbot:latest
+./scripts/deploy/deploy-backend.sh
 ```
+
+**Deploy Frontend (S3/CloudFront):**
+
+```bash
+./scripts/deploy/deploy-frontend.sh
+```
+
+**Deployment Details:**
+
+- **Backend**: Builds Docker image, pushes to ECR, updates Lambda function
+- **Frontend**: Builds React app, uploads to S3, invalidates CloudFront cache
+- **Prerequisites**: AWS CLI, configured AWS profile (use aws-vault)
+
+**Note**: Lambda environment variables are managed by Terraform. Run `cd infrastructure/terraform && terraform apply` to update configuration.
 
 ## Technical Considerations
 

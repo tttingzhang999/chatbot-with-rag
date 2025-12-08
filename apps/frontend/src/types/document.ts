@@ -25,6 +25,16 @@ export interface ProcessDocumentRequest {
   document_id: string;
 }
 
+export interface UploadConfig {
+  use_presigned_urls: boolean;
+}
+
+export interface LocalUploadResponse {
+  document_id: string;
+  status: string;
+  message: string;
+}
+
 export interface UploadProgress {
   document_id: string;
   filename: string;

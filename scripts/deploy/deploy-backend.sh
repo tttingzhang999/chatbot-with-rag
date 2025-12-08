@@ -21,7 +21,7 @@ AWS_PROFILE="tf-gc-playground"
 
 # Derived values
 ECR_IMAGE_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}"
-DOCKERFILE_PATH="../../infrastructure/docker/Dockerfile.lambda"
+DOCKERFILE_PATH="../../infrastructure/docker/Dockerfile.backend"
 
 echo -e "${GREEN}=== HR Chatbot Backend Deployment ===${NC}"
 echo -e "ECR Repository: ${ECR_REPOSITORY}"

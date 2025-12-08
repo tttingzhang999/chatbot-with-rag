@@ -1,0 +1,113 @@
+#=============================================================================
+# TERRAFORM CONFIGURATION EXAMPLE
+# Copy this file to terraform.tfvars and fill in your values
+# NEVER commit terraform.tfvars to git - it contains sensitive information
+#=============================================================================
+
+#-----------------------------------------------------------------------------
+# PROJECT IDENTITY
+#-----------------------------------------------------------------------------
+project_name      = "hr-chatbot"
+project_prefix    = "mycompany" # Change this to your unique prefix (e.g., your company name or username)
+owner_name        = "YourName"
+github_repository = "yourusername/your-repo-name"
+retention_date    = "2026-12-31"
+
+#-----------------------------------------------------------------------------
+# DOMAIN CONFIGURATION
+# Prerequisites:
+# 1. Register a domain name or have access to an existing domain
+# 2. Create a Route 53 hosted zone for your domain
+# 3. Get the hosted zone ID from AWS Console > Route 53 > Hosted zones
+#-----------------------------------------------------------------------------
+root_domain            = "example.com"          # Your domain name
+app_subdomain          = "hr-chatbot"           # Creates hr-chatbot.example.com
+route53_hosted_zone_id = "Z0123456789ABCDEFGH" # Your Route 53 hosted zone ID
+
+#-----------------------------------------------------------------------------
+# AWS ACCOUNT CONFIGURATION
+#
+# Single Account Setup (most common):
+#   - Set both account IDs to the same value
+#   - Set both profiles to the same value
+#
+# Multi-Account Setup (advanced):
+#   - Use different values if Route 53 is in a separate AWS account
+#   - Ensure cross-account permissions are configured
+#-----------------------------------------------------------------------------
+aws_account_id         = "123456789012" # Your 12-digit AWS account ID
+aws_profile            = "default"      # Your AWS CLI profile name (for aws-vault or AWS CLI)
+route53_aws_account_id = "123456789012" # Same as above for single account setup
+route53_aws_profile    = "default"      # Same as above for single account setup
+aws_region             = "us-east-1"    # Your preferred AWS region
+
+#-----------------------------------------------------------------------------
+# VPC & NETWORK CONFIGURATION
+# Prerequisites: You need existing VPC infrastructure
+#
+# Steps to get these values:
+# 1. Create a VPC with at least 2 private subnets in different AZs
+# 2. Create a security group that allows:
+#    - Outbound HTTPS (port 443) to access AWS services
+#    - Outbound PostgreSQL (port 5432) to database
+# 3. Get the IDs from AWS Console > VPC
+#-----------------------------------------------------------------------------
+lambda_security_group_ids = ["sg-0123456789abcdef0"]
+lambda_subnet_ids = [
+  "subnet-0123456789abcdef0", # Private subnet in AZ 1
+  "subnet-0123456789abcdef1"  # Private subnet in AZ 2
+]
+database_availability_zones = ["us-east-1a", "us-east-1b"]
+
+# VPC CIDR blocks for subnets (optional - uses defaults if not specified)
+# vpc_cidr_blocks = ["10.0.0.0/25", "10.0.0.128/25"]
+
+#-----------------------------------------------------------------------------
+# LAMBDA CONFIGURATION
+# Prerequisites:
+# 1. Create an IAM role for Lambda with permissions:
+#    - VPC access (AWSLambdaVPCAccessExecutionRole)
+#    - Bedrock access (bedrock:InvokeModel)
+#    - S3 access (s3:GetObject, s3:PutObject)
+#    - Secrets Manager access (secretsmanager:GetSecretValue)
+#    - RDS access (if using RDS Proxy)
+# 2. Create an ECR repository and push your Lambda container image
+#-----------------------------------------------------------------------------
+lambda_iam_role_name  = "hr-chatbot-lambda-role"
+lambda_ecr_repository = "your-assignment/hr-chatbot-backend" # ECR repository name
+lambda_image_tag      = "latest"
+
+# Optional Lambda settings (uses defaults if not specified)
+# lambda_memory_size                    = 1024
+# lambda_timeout                        = 60
+# lambda_reserved_concurrent_executions = 1
+# lambda_architecture                   = "arm64"  # or "x86_64"
+
+#-----------------------------------------------------------------------------
+# APPLICATION CONFIGURATION
+#-----------------------------------------------------------------------------
+conversation_llm_model_id = "amazon.nova-lite-v1:0" # or "anthropic.claude-sonnet-4"
+title_llm_model_id        = "amazon.nova-lite-v1:0"
+embedding_model_id        = "cohere.embed-v4:0"
+enable_rag                = true
+use_presigned_urls        = true
+
+#-----------------------------------------------------------------------------
+# CLOUDFRONT CONFIGURATION
+# Price Classes:
+#   - PriceClass_100: US, Canada, Europe (lowest cost)
+#   - PriceClass_200: US, Canada, Europe, Asia, Middle East, Africa
+#   - PriceClass_All: All edge locations (highest cost)
+#-----------------------------------------------------------------------------
+cloudfront_price_class = "PriceClass_200"
+
+#-----------------------------------------------------------------------------
+# LOGGING & MONITORING
+#-----------------------------------------------------------------------------
+api_gateway_log_retention_days = 7
+
+#-----------------------------------------------------------------------------
+# DATABASE CONFIGURATION
+#-----------------------------------------------------------------------------
+database_name            = "hr_chatbot"
+database_master_username = "postgres"

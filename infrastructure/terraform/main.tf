@@ -7,28 +7,18 @@ terraform {
     }
   }
 
-  backend "s3" {
-    bucket              = "gc-playground-tfstates"
-    key                 = "tttingzhang999/chatbot-with-rag.tfstate"
-    region              = "ap-northeast-1"
-    profile             = "tf-gc-playground"
-    allowed_account_ids = ["593713876380"]
-  }
+  # Backend configuration is provided via backend.tfvars at init time
+  # Run: terraform init -backend-config=backend.tfvars
+  backend "s3" {}
 }
 
 provider "aws" {
-  region              = "ap-northeast-1"
-  profile             = "tf-gc-playground"
-  allowed_account_ids = ["593713876380"]
+  region              = var.aws_region
+  profile             = var.aws_profile
+  allowed_account_ids = [var.aws_account_id]
 
   default_tags {
-    tags = {
-      Managed   = "terraform"
-      Source    = "tttingzhang999/chatbot-with-rag"
-      Retention = "2025-12-31"
-      Owner     = "TingZhang"
-      Project   = "hr-chatbot"
-    }
+    tags = local.common_tags
   }
 }
 
@@ -36,34 +26,22 @@ provider "aws" {
 provider "aws" {
   alias               = "us-east-1"
   region              = "us-east-1"
-  profile             = "tf-gc-playground"
-  allowed_account_ids = ["593713876380"]
+  profile             = var.aws_profile
+  allowed_account_ids = [var.aws_account_id]
 
   default_tags {
-    tags = {
-      Managed   = "terraform"
-      Source    = "tttingzhang999/chatbot-with-rag"
-      Retention = "2025-12-31"
-      Owner     = "TingZhang"
-      Project   = "hr-chatbot"
-    }
+    tags = local.common_tags
   }
 }
 
 # Additional provider for Route 53 (hosted zone in different AWS account)
 provider "aws" {
   alias               = "route53"
-  region              = "ap-northeast-1"
-  profile             = "tf-gc-dns"
-  allowed_account_ids = ["368617320415"]
+  region              = var.aws_region
+  profile             = var.route53_aws_profile
+  allowed_account_ids = [var.route53_aws_account_id]
 
   default_tags {
-    tags = {
-      Managed   = "terraform"
-      Source    = "tttingzhang999/chatbot-with-rag"
-      Retention = "2025-12-31"
-      Owner     = "TingZhang"
-      Project   = "hr-chatbot"
-    }
+    tags = local.common_tags
   }
 }

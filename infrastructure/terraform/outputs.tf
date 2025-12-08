@@ -11,7 +11,7 @@ output "cloudfront_domain_name" {
 
 output "frontend_url" {
   description = "Frontend custom domain URL"
-  value       = "https://ting-hr-chatbot.goingcloud.ai"
+  value       = "https://${local.frontend_domain}"
 }
 
 output "s3_bucket_name" {

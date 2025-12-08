@@ -40,6 +40,15 @@ env/
 .env.local
 .env.*.local
 
+# Frontend environment files
+apps/frontend/.env.local
+apps/frontend/.env.development
+apps/frontend/.env.staging
+
+# SECURITY: Never commit AWS credentials or secrets
+**/*api-key*
+**/*secret*
+
 # Testing
 .pytest_cache/
 .coverage
@@ -87,6 +96,9 @@ temp/
 
 # Documents
 *.pdf
+
+# Uploaded files (local storage)
+uploads/
 
 lite-hub/
 

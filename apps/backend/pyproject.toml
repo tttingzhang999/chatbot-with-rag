@@ -6,7 +6,7 @@ authors = [
     { name = "Ting Zhang", email = "ting.zhang@going.cloud" }
 ]
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 license = { text = "Proprietary" }
 
 dependencies = [
@@ -58,7 +58,7 @@ packages = ["src"]
 
 [tool.ruff]
 # Set the target Python version
-target-version = "py311"
+target-version = "py313"
 
 # Set line length
 line-length = 100

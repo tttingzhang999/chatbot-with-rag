@@ -98,11 +98,7 @@ class Settings(BaseSettings):
     )
     AWS_PROFILE: str | None = Field(
         default=None,
-        description="AWS profile name (optional, for local development)",
-    )
-    AWS_BEARER_TOKEN_BEDROCK: str | None = Field(
-        default=None,
-        description="AWS Bearer Token for Bedrock API (alternative to Access Key credentials)",
+        description="AWS profile name (optional, for local development with aws-vault)",
     )
 
     # ========== Database ==========

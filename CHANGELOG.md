@@ -5,6 +5,84 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] 2025-12-12 - Local Dev Refactor, Docker/Deployment Workflow, AWS Vault
+
+### Added
+
+- **Local Development Scripts:**
+  - New scripts for fast native development:
+    - `./scripts/local/start-backend.sh <aws-profile>`: Starts FastAPI backend with hot-reload and AWS credentials via `aws-vault`.
+    - `./scripts/local/start-frontend.sh`: Runs Vite React frontend with hot module reload (HMR).
+    - `./scripts/local/init-db.sh`: Runs database migrations with Alembic on local PostgreSQL.
+  - Natively supports secure local development using local .env and `aws-vault` (never store keys in .env).
+  - Frontend development now runs from `/apps/frontend`, backend from `/apps/backend`.
+
+- **Docker Compose Production-Like Workflow:**
+  - Can start a full stack (backend, frontend, DB) with `aws-vault exec <profile> -- docker-compose up --build`.
+  - Simulates production configuration: no hot-reload, backend behind Uvicorn with no auto-reload, frontend served as static files.
+  - New backend entrypoint: `scripts/docker/start-backend.sh` (handles DB migration and Uvicorn startup).
+  - Uploaded files in local mode now saved to `uploads/` (gitignored).
+  - Frontend and backend Dockerfiles and compose workflows updated for new directory structure.
+
+- **Infrastructure Improvements:**
+  - Terraform: Parametrized VPCs, subnets, and endpoints with shared `local.common_tags` and new variables.
+  - Enhanced configurability for CloudFront, DB, and feature toggles (e.g., enable/disable S3 presigned URLs, RAG).
+  - Documented all key environment variables and infrastructure settings.
+
+- **Security and Ignore Rules:**
+  - Updated `.gitignore`:
+    - Ignore `/uploads/` directory and files with patterns like `*api-key*`, `*secret*`.
+    - Ignore all frontend environment files (`apps/frontend/.env.local`, etc.) for safety.
+
+- **Documentation Overhaul:**
+  - Updated `README.md` and `CLAUDE.md`:
+    - Clear separation of native dev vs. Docker Compose vs. AWS.
+    - Step-by-step setup for backend/frontend, with AWS Vault and environment configuration guides.
+    - Explicit guide for generating and setting `SECRET_KEY`.
+    - Instructions for new script usage, infrastructure setup, and deployment automation.
+    - Local development and production/deployment clearly documented for all platforms.
+  - `.env.example` improved with detailed docs for each var and secure credential setup instructions.
+
+- **Deployment Scripts:**
+  - Backend: `scripts/deploy/deploy-backend.sh` (renamed from `apps/backend/deploy.sh`, now handles image build, ECR push, Lambda update).
+  - Frontend: `scripts/deploy/deploy-frontend.sh` (renamed from `apps/frontend/deploy.sh`, for S3 + CloudFront static site updates).
+
+### Changed
+
+- **Project Layout:**
+  - Separated all backend and frontend scripts into dedicated `/scripts/local`, `/scripts/docker`, and `/scripts/deploy` folders.
+  - All direct startup scripts at project root deleted (now replaced by new structure).
+  - Frontend dev moved from Python/Gradio to native React/Vite workflow.
+
+- **AWS Credentials & Security:**
+  - Local development _requires_ `aws-vault` for AWS credentials.
+  - `.env` **must never** contain AWS keys; all access via `aws-vault`, both for local dev and Docker Compose.
+  - Production/Lambda uses IAM Role (no manual credential setup).
+
+- **Infrastructure as Code (Terraform):**
+  - VPC, endpoints, subnets, and DB are now fully parametrized and DRY using locals/variables.
+  - Cleaner tagging and security group injection for all major resources.
+
+### Removed
+
+- **Legacy Scripts:**
+  - Deleted old `scripts/start_backend.sh` and `scripts/start_frontend.sh` (Gradio/legacy paths).
+  - Removed all Gradio/legacy frontend and references.
+  - Outdated local development flows and credentials handling code removed.
+
+### Migration & Usage Notes
+
+- All local development now runs natively (with hot-reload) or via Docker Compose (prod simulation).
+- Use `aws-vault` for ALL development or Docker launches, always providing your AWS profile.
+- `.env` is for app config, _never_ for AWS keys.
+- See `README.md` for updated guides on secret management, service startup, and deployment.
+
+### See Also
+
+- `/scripts/local/`, `/scripts/deploy/`, `/scripts/docker/` for all new entrypoint scripts.
+- `.gitignore` for new security patterns.
+- `.env.example`, `README.md`, and `CLAUDE.md` for up-to-date workflow and architecture notes.
+
 ## [1.0.0] 2025-12-08 - Frontend Migration to React + CloudFront
 
 ### Changed

@@ -121,6 +121,11 @@ class RetrievalService:
             # Remove special characters that could break tsquery
             cleaned_query = query_text.replace("'", "").replace('"', "")
 
+            # Use 'simple' text search config for better Chinese support
+            # 'simple' doesn't do stemming, which works better for Chinese text
+            # It also handles mixed Chinese-English content better than 'english'
+            tsquery = func.plainto_tsquery("simple", cleaned_query)
+
             # Build query with ts_rank for BM25-style scoring
             query = (
                 self.db.query(
@@ -132,16 +137,12 @@ class RetrievalService:
                     # ts_rank scores based on term frequency and document statistics
                     func.ts_rank(
                         DocumentChunk.content_tsvector,
-                        func.plainto_tsquery("english", cleaned_query),
+                        tsquery,
                     ).label("rank"),
                 )
                 .join(Document, DocumentChunk.document_id == Document.id)
                 .filter(Document.status == "completed")
-                .filter(
-                    DocumentChunk.content_tsvector.op("@@")(
-                        func.plainto_tsquery("english", cleaned_query)
-                    )
-                )
+                .filter(DocumentChunk.content_tsvector.op("@@")(tsquery))
             )
 
             # Filter by user if specified

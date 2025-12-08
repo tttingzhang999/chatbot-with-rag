@@ -6,25 +6,42 @@
 
 ### 🚀 快速開始
 
+#### 方式 1: 本地開發（Native - 推薦用於開發）
+
 ```bash
 # 1. 複製環境變數範本
 cp .env.example .env
 
-# 2. 產生 SECRET_KEY 並設定 .env
-python scripts/generate_secret_key.py
+# 2. 編輯 .env 並設定必要變數（SECRET_KEY, DATABASE_URL）
+# 可用此指令產生 SECRET_KEY: openssl rand -hex 32
 
 # 3. 初始化資料庫
-./scripts/init_db.sh
+./scripts/local/init-db.sh
 
-# 4. 啟動後端（Terminal 1）
-./scripts/start_backend.sh
+# 4. 啟動後端（Terminal 1）- 支援 hot-reload
+./scripts/local/start-backend.sh
 
-# 5. 啟動前端（Terminal 2）
-./scripts/start_frontend.sh
+# 5. 啟動前端（Terminal 2）- 支援 HMR
+./scripts/local/start-frontend.sh
 
 # 6. 存取應用
-# 前端: http://localhost:7860
+# 前端: http://localhost:5173
 # API文件: http://localhost:8000/docs
+```
+
+#### 方式 2: Docker Compose
+
+```bash
+# 1. 確保 .env 已設定完成
+
+# 2. 一鍵啟動所有服務（包括資料庫、後端、前端）
+aws-vault exec <profile> -- docker-compose up --build
+
+# 3. 存取應用
+# 前端: http://localhost:5173
+# API文件: http://localhost:8000/docs
+
+# 注意：此模式無 hot-reload，程式碼變更需重新 build
 ```
 
 ### 📝 常用指令
@@ -40,9 +57,9 @@ python scripts/generate_secret_key.py
 
 ### 📚 重要文件
 
-- [本地開發指南](docs/local_development.md) - 詳細的本地開發說明
+- [開發模式說明](#開發指令) - 本地開發 vs Docker 測試
 - [環境變數設定](#環境變數設定) - 完整的環境變數說明
-- [開發指令](#開發指令) - 所有開發相關指令
+- [部署指南](#部署) - 部署到 AWS Lambda 與 S3/CloudFront
 - [專案進度](#專案進度) - 目前開發進度
 
 ---
@@ -57,9 +74,10 @@ python scripts/generate_secret_key.py
 - [開發環境設定](#開發環境設定)
 - [環境變數設定](#環境變數設定)
 - [開發指令](#開發指令)
-- [RAG 基礎概念](#rag-基礎概念)
-- [專案進度](#專案進度)
-- [開發規範](#開發規範)
+  - [模式 1: 本地開發](#模式-1-本地開發native-development)
+  - [模式 2: Docker Compose](#模式-2-docker-composeproduction-ready)
+- [部署](#部署)
+- [參考資源](#參考資源)
 
 ## 專案目標
 
@@ -350,12 +368,16 @@ cp .env.example .env
 
 #### AWS 相關環境變數（需使用 Bedrock 時）
 
-| 變數名稱          | 說明                         | 預設值      | 備註                        |
-| ----------------- | ---------------------------- | ----------- | --------------------------- |
-| `AWS_REGION`      | AWS 服務區域                 | `us-east-1` | 使用 Bedrock 時必填         |
-| `AWS_PROFILE`     | AWS 設定檔名稱               | -           | 本地開發用 aws-vault 時需要 |
-| `DB_SECRET_NAME`  | AWS Secrets Manager 金鑰名稱 | -           | 僅生產環境需要              |
-| `DOCUMENT_BUCKET` | S3 儲存桶名稱                | -           | 僅生產環境需要              |
+| 變數名稱          | 說明                         | 預設值           | 備註                |
+| ----------------- | ---------------------------- | ---------------- | ------------------- |
+| `AWS_REGION`      | AWS 服務區域                 | `ap-northeast-1` | 使用 Bedrock 時必填 |
+| `DB_SECRET_NAME`  | AWS Secrets Manager 金鑰名稱 | -                | 僅生產環境需要      |
+| `DOCUMENT_BUCKET` | S3 儲存桶名稱                | -                | 僅生產環境需要      |
+
+**AWS 認證方式:**
+
+- **本地開發**: 必須使用 `aws-vault` 管理憑證,不支援 API Key
+- **Lambda/生產環境**: 自動使用 IAM Role,無需額外設定
 
 #### 可選環境變數（有預設值）
 
@@ -438,58 +460,90 @@ cp .env.example .env
 
 ## 開發指令
 
-### 快速開始（本地開發）
+### 開發模式說明
 
-適合初次使用或不需要 AWS Bedrock 功能的開發：
+專案提供兩種開發模式，依據不同需求選擇：
+
+#### 模式 1: 本地開發（Native Development）
+
+**適用場景**：日常開發、快速迭代、debug
+
+**特點**：
+
+- ✅ 支援 hot-reload（後端）和 HMR（前端）
+- ✅ 程式碼變更立即生效
+- ✅ 使用本機 PostgreSQL
+- ✅ 快速啟動
+
+**啟動方式**：
 
 ```bash
 # 1. 設定環境變數
 cp .env.example .env
-# 編輯 .env 檔案，設定 SECRET_KEY 和 DATABASE_URL
+# 編輯 .env：設定 SECRET_KEY 和 DATABASE_URL
 
-# 2. 產生 SECRET_KEY（複製輸出結果到 .env）
-python scripts/generate_secret_key.py
+# 2. 初始化本地資料庫
+./scripts/local/init-db.sh
 
-# 3. 初始化資料庫
-./scripts/init_db.sh
+# 3. 啟動後端（Terminal 1）
+./scripts/local/start-backend.sh
 
-# 4. 啟動後端 API (Terminal 1)
-./scripts/start_backend.sh
-# 或: python -m uvicorn src.main:app --reload
-
-# 5. 啟動前端界面 (Terminal 2)
-./scripts/start_frontend.sh
-# 或: python src/app.py
-
-# 6. 測試 API（選用）
-python scripts/test_api.py
+# 4. 啟動前端（Terminal 2）
+./scripts/local/start-frontend.sh
 ```
 
 **存取應用程式**：
 
-- 🌐 前端界面: http://localhost:7860
+- 🌐 前端界面: http://localhost:5173
 - 📚 API 文件: http://localhost:8000/docs
-- 🔧 OpenAPI JSON: http://localhost:8000/openapi.json
 
-### 使用 AWS Bedrock
+#### 模式 2: Docker Compose（Production Ready）
+
+**適用場景**：測試部署前行為、驗證容器化設定
+
+**特點**：
+
+- ✅ 模擬生產環境行為
+- ✅ 前端使用 Nginx 提供靜態檔案
+- ✅ 後端使用 production 模式（無 hot-reload）
+- ✅ 包含完整服務（PostgreSQL + Backend + Frontend）
+- ⚠️ 程式碼變更需重新 build
+
+**啟動方式**：
+
+```bash
+# 1. 確保 .env 已設定完成
+
+# 2. 啟動所有服務
+docker-compose up --build
+
+# 3. 停止服務
+docker-compose down
+
+# 4. 停止並清除資料
+docker-compose down -v
+```
+
+**存取應用程式**：
+
+- 🌐 前端界面: http://localhost:5173
+- 📚 API 文件: http://localhost:8000/docs
+
+### 使用 AWS Bedrock（本地開發時）
+
+如果需要測試 AWS Bedrock 功能（LLM、Embedding）：
 
 ```bash
 # 1. 設定 AWS Vault
 aws-vault add <your-profile-name>
 
-# 2. 在 .env 中設定 AWS_PROFILE 和 AWS_REGION
+# 2. 在 .env 中設定 AWS 相關變數
 # AWS_PROFILE=<your-profile-name>
 # AWS_REGION=us-east-1
 
-# 3. 使用 AWS Vault 啟動後端
-./scripts/start_backend_with_aws.sh
-# 或: aws-vault exec <profile> -- python -m uvicorn src.main:app --reload
-
-# 4. 測試文件處理（有上傳文件後）
-python scripts/test_basic_processing.py
-
-# 5. 測試 RAG 功能（有上傳文件後）
-python scripts/test_rag.py
+# 3. 使用 AWS Vault 執行後端
+cd apps/backend
+aws-vault exec <profile> -- uv run uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### 資料庫遷移（Database Migrations）
@@ -533,9 +587,41 @@ pre-commit run --all-files
 pytest
 ```
 
-### AWS 雲端部署
+## 部署
 
-詳細部署步驟請參考 [部署文件](docs/deployment.md)（待建立）
+### 部署到 AWS
+
+專案提供獨立的部署腳本，分別部署後端和前端：
+
+#### 部署後端（Lambda）
+
+```bash
+# 部署到 AWS Lambda（使用 ECR Container Image）
+./scripts/deploy/deploy-backend.sh
+
+# 腳本會自動執行：
+# 1. Build Docker image
+# 2. Push 到 ECR
+# 3. Update Lambda function
+```
+
+#### 部署前端（S3 + CloudFront）
+
+```bash
+# 部署到 S3 並更新 CloudFront
+./scripts/deploy/deploy-frontend.sh
+
+# 腳本會自動執行：
+# 1. Build React 生產版本
+# 2. Upload 到 S3
+# 3. Invalidate CloudFront cache
+```
+
+**注意事項**：
+
+- 部署前需確保 AWS credentials 設定正確
+- 需要對應的 IAM 權限（ECR、Lambda、S3、CloudFront）
+- 建議先在 Docker Compose 模式測試後再部署
 
 ## 參考資源
 

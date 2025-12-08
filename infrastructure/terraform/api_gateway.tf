@@ -1,12 +1,10 @@
 # API Gateway for HR Chatbot Backend
 resource "aws_apigatewayv2_api" "hr_chatbot_api" {
-  name          = "hr-chatbot-api"
+  name          = "${var.project_name}-api"
   protocol_type = "HTTP"
 
   cors_configuration {
-    allow_origins = [
-      "https://ting-hr-chatbot.goingcloud.ai",
-    ]
+    allow_origins     = ["https://${local.frontend_domain}"]
     allow_methods     = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     allow_headers     = ["*"]
     allow_credentials = true
@@ -14,12 +12,7 @@ resource "aws_apigatewayv2_api" "hr_chatbot_api" {
     max_age           = 300
   }
 
-  tags = {
-    Owner     = "TingZhang"
-    Project   = "hr-chatbot"
-    Managed   = "terraform"
-    Retention = "2025-12-31"
-  }
+  tags = local.common_tags
 }
 
 # Lambda Integration
@@ -127,25 +120,15 @@ resource "aws_apigatewayv2_stage" "default" {
     })
   }
 
-  tags = {
-    Owner     = "TingZhang"
-    Project   = "hr-chatbot"
-    Managed   = "terraform"
-    Retention = "2025-12-31"
-  }
+  tags = local.common_tags
 }
 
 # CloudWatch Log Group for API Gateway
 resource "aws_cloudwatch_log_group" "api_gateway" {
-  name              = "/aws/apigateway/hr-chatbot-api"
-  retention_in_days = 7
+  name              = "/aws/apigateway/${var.project_name}-api"
+  retention_in_days = var.api_gateway_log_retention_days
 
-  tags = {
-    Owner     = "TingZhang"
-    Project   = "hr-chatbot"
-    Managed   = "terraform"
-    Retention = "2025-12-31"
-  }
+  tags = local.common_tags
 }
 
 # Lambda Permission for API Gateway
@@ -159,19 +142,14 @@ resource "aws_lambda_permission" "api_gateway" {
 
 # ACM Certificate for API Gateway Custom Domain
 resource "aws_acm_certificate" "api" {
-  domain_name       = "api.ting-hr-chatbot.goingcloud.ai"
+  domain_name       = local.api_domain
   validation_method = "DNS"
 
   lifecycle {
     create_before_destroy = true
   }
 
-  tags = {
-    Owner     = "TingZhang"
-    Retention = "2025-12-31"
-    Project   = "hr-chatbot"
-    Managed   = "terraform"
-  }
+  tags = local.common_tags
 }
 
 # DNS record for API certificate validation
@@ -202,7 +180,7 @@ resource "aws_acm_certificate_validation" "api" {
 
 # API Gateway Custom Domain Name
 resource "aws_apigatewayv2_domain_name" "api" {
-  domain_name = "api.ting-hr-chatbot.goingcloud.ai"
+  domain_name = local.api_domain
 
   domain_name_configuration {
     certificate_arn = aws_acm_certificate_validation.api.certificate_arn
@@ -210,12 +188,7 @@ resource "aws_apigatewayv2_domain_name" "api" {
     security_policy = "TLS_1_2"
   }
 
-  tags = {
-    Owner     = "TingZhang"
-    Project   = "hr-chatbot"
-    Managed   = "terraform"
-    Retention = "2025-12-31"
-  }
+  tags = local.common_tags
 }
 
 # API Gateway Domain Mapping
@@ -229,7 +202,7 @@ resource "aws_apigatewayv2_api_mapping" "api" {
 resource "aws_route53_record" "api" {
   provider = aws.route53
   zone_id  = data.aws_route53_zone.goingcloud.zone_id
-  name     = "api.ting-hr-chatbot.goingcloud.ai"
+  name     = local.api_domain
   type     = "A"
 
   alias {

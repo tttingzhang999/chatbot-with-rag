@@ -49,7 +49,7 @@ export function UploadZone({ onFilesSelected, disabled = false }: UploadZoneProp
       <Card
         {...getRootProps()}
         className={cn(
-          'border-2 border-dashed p-8 text-center cursor-pointer transition-colors',
+          'border-2 border-dashed p-4 text-center cursor-pointer transition-colors',
           'hover:border-primary hover:bg-accent/50',
           isDragActive && 'border-primary bg-accent',
           isDragReject && 'border-destructive bg-destructive/10',
@@ -58,24 +58,24 @@ export function UploadZone({ onFilesSelected, disabled = false }: UploadZoneProp
       >
         <input {...getInputProps()} />
 
-        <div className="flex flex-col items-center justify-center gap-3">
+        <div className="flex flex-col items-center justify-center gap-2">
           <div className={cn(
-            'p-3 rounded-full',
+            'p-2 rounded-full',
             isDragActive && !isDragReject && 'bg-primary/10',
             isDragReject && 'bg-destructive/10'
           )}>
             {isDragReject ? (
-              <AlertCircle className="h-8 w-8 text-destructive" />
+              <AlertCircle className="h-5 w-5 text-destructive" />
             ) : (
               <Upload className={cn(
-                'h-8 w-8',
+                'h-5 w-5',
                 isDragActive ? 'text-primary' : 'text-muted-foreground'
               )} />
             )}
           </div>
 
-          <div className="space-y-1">
-            <p className="text-sm font-medium">
+          <div className="space-y-0.5">
+            <p className="text-xs font-medium">
               {isDragActive
                 ? isDragReject
                   ? 'Some files are not supported'
@@ -87,8 +87,8 @@ export function UploadZone({ onFilesSelected, disabled = false }: UploadZoneProp
             </p>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <FileText className="h-4 w-4" />
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <FileText className="h-3.5 w-3.5" />
             <span>Multiple files supported</span>
           </div>
         </div>
