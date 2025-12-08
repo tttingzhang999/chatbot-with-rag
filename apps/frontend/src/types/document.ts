@@ -1,14 +1,12 @@
 export interface Document {
   id: string;
-  user_id: string;
-  filename: string;
+  file_name: string;
   file_type: string;
   file_size: number;
-  s3_key: string;
+  upload_date: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
-  error_message?: string;
-  created_at: string;
-  updated_at: string;
+  error_message: string | null;
+  chunk_count: number;
 }
 
 export interface PresignedUrlRequest {

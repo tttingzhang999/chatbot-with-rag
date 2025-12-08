@@ -79,11 +79,11 @@ export function DocumentItem({ document, onDelete, isDeleting = false }: Documen
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{document.filename}</p>
-                <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                <p className="font-medium truncate">{document.file_name}</p>
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
                   <span>{formatFileSize(document.file_size)}</span>
                   <span>•</span>
-                  <span>{formatDate(document.created_at)}</span>
+                  <span>{formatDate(document.upload_date)}</span>
                 </div>
               </div>
 
