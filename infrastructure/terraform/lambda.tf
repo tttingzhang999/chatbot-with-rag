@@ -4,7 +4,7 @@ resource "aws_lambda_function" "hr-chatbot-backend" {
   image_uri                      = "593713876380.dkr.ecr.ap-northeast-1.amazonaws.com/ting-assignment/hr-chatbot-backend:latest"
   role                           = "arn:aws:iam::593713876380:role/hr-chatbot-lambda-role"
   architectures                  = ["arm64"]
-  reserved_concurrent_executions = 5
+  reserved_concurrent_executions = 1
   timeout                        = 60
   memory_size                    = 1024
   publish                        = false

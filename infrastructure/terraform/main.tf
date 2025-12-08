@@ -32,7 +32,7 @@ provider "aws" {
   }
 }
 
-# Additional provider for us-east-1 (required for ACM certificates used with App Runner)
+# Additional provider for us-east-1 (required for ACM certificates used with CloudFront)
 provider "aws" {
   alias               = "us-east-1"
   region              = "us-east-1"

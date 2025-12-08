@@ -5,10 +5,13 @@ data "aws_route53_zone" "goingcloud" {
   zone_id  = "Z085163319K6AHT4RRWR4"
 }
 
-# ACM Certificate for API Gateway (must be in the same region as API Gateway)
-resource "aws_acm_certificate" "api" {
-  provider          = aws # ap-northeast-1
-  domain_name       = "api.ting-hr-chatbot.goingcloud.ai"
+# Note: API Gateway certificate and DNS records are defined in api_gateway.tf
+# to keep all API-related resources together
+
+# ACM Certificate for CloudFront (must be in us-east-1)
+resource "aws_acm_certificate" "frontend" {
+  provider          = aws.us-east-1
+  domain_name       = "ting-hr-chatbot.goingcloud.ai"
   validation_method = "DNS"
 
   lifecycle {
@@ -22,12 +25,12 @@ resource "aws_acm_certificate" "api" {
   }
 }
 
-# DNS record for API certificate validation
-resource "aws_route53_record" "api_cert_validation" {
+# DNS record for frontend certificate validation
+resource "aws_route53_record" "frontend_cert_validation" {
   provider = aws.route53
 
   for_each = {
-    for dvo in aws_acm_certificate.api.domain_validation_options : dvo.domain_name => {
+    for dvo in aws_acm_certificate.frontend.domain_validation_options : dvo.domain_name => {
       name   = dvo.resource_record_name
       record = dvo.resource_record_value
       type   = dvo.resource_record_type
@@ -42,11 +45,11 @@ resource "aws_route53_record" "api_cert_validation" {
   zone_id         = data.aws_route53_zone.goingcloud.zone_id
 }
 
-# API certificate validation
-resource "aws_acm_certificate_validation" "api" {
-  provider                = aws # ap-northeast-1
-  certificate_arn         = aws_acm_certificate.api.arn
-  validation_record_fqdns = [for record in aws_route53_record.api_cert_validation : record.fqdn]
+# Frontend certificate validation
+resource "aws_acm_certificate_validation" "frontend" {
+  provider                = aws.us-east-1
+  certificate_arn         = aws_acm_certificate.frontend.arn
+  validation_record_fqdns = [for record in aws_route53_record.frontend_cert_validation : record.fqdn]
 }
 
 # A record pointing to CloudFront distribution
@@ -73,20 +76,6 @@ resource "aws_route53_record" "frontend_ipv6" {
   alias {
     name                   = aws_cloudfront_distribution.frontend.domain_name
     zone_id                = aws_cloudfront_distribution.frontend.hosted_zone_id
-    evaluate_target_health = false
-  }
-}
-
-# DNS A record for API Gateway custom domain
-resource "aws_route53_record" "api" {
-  provider = aws.route53
-  zone_id  = data.aws_route53_zone.goingcloud.zone_id
-  name     = "api.ting-hr-chatbot.goingcloud.ai"
-  type     = "A"
-
-  alias {
-    name                   = aws_apigatewayv2_domain_name.api.domain_name_configuration[0].target_domain_name
-    zone_id                = aws_apigatewayv2_domain_name.api.domain_name_configuration[0].hosted_zone_id
     evaluate_target_health = false
   }
 }
