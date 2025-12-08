@@ -5,7 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] 2025-12-12 - Local Dev Refactor, Docker/Deployment Workflow, AWS Vault
+## [1.1.1] 2025-12-08 - LICENSE, Terraform S3, Docs/Infra Structure
+
+### Added
+
+- **LICENSE:**
+  - Added `LICENSE` file (MIT License) to the repository.
+- **Documentation:**
+  - Included high-level architecture diagram: `docs/architecture.png`.
+  - Updated main `README.md` with a complete English rewrite, project structure, and architecture diagram.
+  - Added comprehensive documentation on features, tech stack, deployment, and environment setup.
+  - Moved and renamed `README_SETUP.md` to `infrastructure/terraform/README.md` (infra docs).
+
+### Changed
+
+- **Terraform S3 Bucket Naming:**
+  - Changed S3 `documents_bucket_name` format in `infrastructure/terraform/locals.tf` for global uniqueness (now `${var.project_name}-documents-${var.aws_region}`).
+- **Infrastructure Docs:**
+  - Improved infrastructure documentation for deployment, environment management, and AWS resource structure.
+
+### Removed
+
+- **Legacy Docker Script:**
+  - Deleted `scripts/docker/start-backend.sh` (production entrypoint now handled via deploy scripts).
+
+## [1.1.0] 2025-12-08 - Local Dev Refactor, Docker/Deployment Workflow, AWS Vault
 
 ### Added
 

@@ -9,7 +9,7 @@ locals {
   api_domain      = "api.${var.app_subdomain}.${var.root_domain}"
 
   # S3 bucket names (must be globally unique)
-  documents_bucket_name = "${var.project_prefix}-${var.project_name}-documents-${var.aws_region}"
+  documents_bucket_name = "${var.project_name}-documents-${var.aws_region}"
   frontend_bucket_name  = "${var.project_prefix}-${var.project_name}-frontend"
 
   # ECR image URI
