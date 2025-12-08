@@ -52,11 +52,14 @@ fi
 echo "=========================================="
 echo "Starting FastAPI Backend (Local Development)"
 echo "=========================================="
-echo "API:  http://localhost:8000"
-echo "Docs: http://localhost:8000/docs"
-echo "Mode: Hot-reload enabled"
-echo "Auth: aws-vault (profile: $AWS_PROFILE)"
+echo "Local:   http://localhost:8000"
+echo "Docs:    http://localhost:8000/docs"
+echo "Network: Listening on 0.0.0.0:8000 (accessible from LAN)"
+echo "Mode:    Hot-reload enabled"
+echo "Auth:    aws-vault (profile: $AWS_PROFILE)"
 echo "=========================================="
+echo ""
+echo "💡 Tip: Use 'ifconfig' or 'ip addr' to find your LAN IP address"
 echo ""
 
 # Start uvicorn with hot-reload via aws-vault

@@ -1,6 +1,20 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+// Auto-detect backend URL based on current hostname
+// If VITE_API_BASE_URL is set, use it (for production)
+// Otherwise, use current hostname with port 8000 (for local development across devices)
+const getApiBaseUrl = (): string => {
+  // If explicit env var is set, use it
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+
+  // For local development: use current hostname with backend port
+  const hostname = window.location.hostname;
+  return `http://${hostname}:8000`;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 // Create axios instance
 export const api = axios.create({
