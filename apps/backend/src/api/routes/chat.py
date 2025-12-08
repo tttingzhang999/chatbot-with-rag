@@ -35,8 +35,7 @@ class ChatResponse(BaseModel):
     """Chat response model."""
 
     conversation_id: str
-    user_message: MessageResponse
-    assistant_message: MessageResponse
+    messages: list[MessageResponse]
 
 
 class ConversationListItem(BaseModel):
@@ -47,6 +46,12 @@ class ConversationListItem(BaseModel):
     created_at: datetime
     updated_at: datetime
     message_count: int
+
+
+class ConversationListResponse(BaseModel):
+    """Conversation list response model."""
+
+    conversations: list[ConversationListItem]
 
 
 class ConversationHistoryResponse(BaseModel):
@@ -83,6 +88,13 @@ def send_message(
     # Get conversation history
     history = chat_service.get_conversation_history(db=db, conversation_id=conversation.id)
 
+    # Generate title for new conversations (first message)
+    if not history:  # No previous messages means this is the first message
+        title = chat_service.generate_conversation_title(request.message)
+        conversation.title = title
+        db.commit()
+        db.refresh(conversation)
+
     # Save user message
     user_message = chat_service.save_message(
         db=db,
@@ -110,26 +122,28 @@ def send_message(
 
     return ChatResponse(
         conversation_id=str(conversation.id),
-        user_message=MessageResponse(
-            id=str(user_message.id),
-            role=user_message.role,
-            content=user_message.content,
-            created_at=user_message.created_at,
-        ),
-        assistant_message=MessageResponse(
-            id=str(assistant_message.id),
-            role=assistant_message.role,
-            content=assistant_message.content,
-            created_at=assistant_message.created_at,
-        ),
+        messages=[
+            MessageResponse(
+                id=str(user_message.id),
+                role=user_message.role,
+                content=user_message.content,
+                created_at=user_message.created_at,
+            ),
+            MessageResponse(
+                id=str(assistant_message.id),
+                role=assistant_message.role,
+                content=assistant_message.content,
+                created_at=assistant_message.created_at,
+            ),
+        ],
     )
 
 
-@router.get("/conversations", response_model=list[ConversationListItem])
+@router.get("/conversations", response_model=ConversationListResponse)
 def get_conversations(
     db: DBSession,
     current_user: CurrentUser,
-) -> list[ConversationListItem]:
+) -> ConversationListResponse:
     """
     Get all conversations for current user.
 
@@ -138,11 +152,11 @@ def get_conversations(
         current_user: Current user ID
 
     Returns:
-        list[ConversationListItem]: List of conversations
+        ConversationListResponse: Response with list of conversations
     """
     conversations = chat_service.get_user_conversations(db=db, user_id=current_user.id)
 
-    return [
+    conversation_items = [
         ConversationListItem(
             id=str(conv.id),
             title=conv.title or "Untitled Conversation",
@@ -152,6 +166,8 @@ def get_conversations(
         )
         for conv, msg_count in conversations
     ]
+
+    return ConversationListResponse(conversations=conversation_items)
 
 
 @router.get("/conversations/{conversation_id}", response_model=ConversationHistoryResponse)

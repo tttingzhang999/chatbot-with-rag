@@ -15,7 +15,7 @@
 # ==============================================================================
 FROM ghcr.io/astral-sh/uv:latest AS uv
 
-FROM public.ecr.aws/lambda/python:3.13 AS builder
+FROM public.ecr.aws/lambda/python:3.13-arm64 AS builder
 
 # Install build dependencies (gcc for psycopg2, numpy, etc.)
 RUN dnf install -y gcc gcc-c++ && \
@@ -49,7 +49,7 @@ COPY backend_entrypoint.py "${LAMBDA_TASK_ROOT}/"
 # ==============================================================================
 # Stage 2: Runtime - Final Lambda image
 # ==============================================================================
-FROM public.ecr.aws/lambda/python:3.13 AS runtime-base
+FROM public.ecr.aws/lambda/python:3.13-arm64 AS runtime-base
 
 # Copy installed dependencies and application code from builder
 # Everything is already in LAMBDA_TASK_ROOT (/var/task)

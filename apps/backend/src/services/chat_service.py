@@ -17,6 +17,49 @@ from src.prompts.system_prompts import get_system_prompt
 logger = logging.getLogger(__name__)
 
 
+def generate_conversation_title(first_user_message: str) -> str:
+    """
+    Generate a conversation title based on the first user message using LLM.
+
+    Args:
+        first_user_message: The first message from the user
+
+    Returns:
+        str: Generated title (max 50 characters)
+    """
+    try:
+        bedrock_client = get_bedrock_client()
+
+        # Simple system prompt for title generation
+        title_system_prompt = (
+            "You are a helpful assistant that generates concise conversation titles. "
+            "Based on the user's message, generate a short, descriptive title (max 50 characters). "
+            "Return ONLY the title text, no quotes, no explanation."
+            "Always response in Traditional Chinese."
+        )
+
+        # Use LLM to generate title with title-specific model
+        title = bedrock_client.invoke_llm(
+            user_message=f"Generate a title for this conversation: {first_user_message}",
+            conversation_history=[],
+            system_prompt=title_system_prompt,
+            use_case="title",
+        )
+
+        # Clean up and truncate title
+        title = title.strip().strip('"').strip("'")
+        if len(title) > 50:
+            title = title[:47] + "..."
+
+        logger.info(f"Generated conversation title: {title}")
+        return title
+
+    except Exception as e:
+        logger.error(f"Failed to generate conversation title: {e}")
+        # Fallback to default title
+        return f"Conversation {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+
+
 def get_or_create_conversation(
     db: Session,
     user_id: uuid.UUID,
@@ -96,7 +139,7 @@ def generate_response(
     user_id: uuid.UUID | None = None,
 ) -> tuple[str, list[dict] | None]:
     """
-    Generate response to user message using Claude Sonnet 4 via Bedrock.
+    Generate response to user message using LLM via Bedrock.
 
     Args:
         user_message: User's message
@@ -181,12 +224,13 @@ def generate_response(
             use_rag=settings.ENABLE_RAG, context=retrieval_context
         )
 
-        # Get Bedrock client and invoke Claude
+        # Get Bedrock client and invoke LLM with conversation model
         bedrock_client = get_bedrock_client()
-        response = bedrock_client.invoke_claude(
+        response = bedrock_client.invoke_llm(
             user_message=user_message,
             conversation_history=limited_history,
             system_prompt=system_prompt,
+            use_case="conversation",
         )
 
         logger.info("Response generated successfully")

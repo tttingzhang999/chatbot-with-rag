@@ -1,15 +1,25 @@
-# Output for debugging and manual DNS record creation
-output "apprunner_validation_records" {
-  description = "DNS validation records needed for App Runner custom domain"
-  value = aws_apprunner_custom_domain_association.frontend.certificate_validation_records
+# CloudFront and Frontend Outputs
+output "cloudfront_distribution_id" {
+  description = "CloudFront Distribution ID (needed for cache invalidation)"
+  value       = aws_cloudfront_distribution.frontend.id
+}
+
+output "cloudfront_domain_name" {
+  description = "CloudFront Distribution Domain Name"
+  value       = aws_cloudfront_distribution.frontend.domain_name
 }
 
 output "frontend_url" {
   description = "Frontend custom domain URL"
-  value       = "https://${aws_apprunner_custom_domain_association.frontend.domain_name}"
+  value       = "https://ting-hr-chatbot.goingcloud.ai"
 }
 
-output "apprunner_dns_target" {
-  description = "App Runner DNS target for CNAME record"
-  value       = aws_apprunner_custom_domain_association.frontend.dns_target
+output "s3_bucket_name" {
+  description = "S3 bucket name for frontend static files"
+  value       = aws_s3_bucket.frontend.id
+}
+
+output "acm_certificate_arn" {
+  description = "ACM certificate ARN for HTTPS"
+  value       = aws_acm_certificate.frontend.arn
 }

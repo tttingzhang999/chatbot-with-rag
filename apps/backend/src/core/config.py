@@ -7,7 +7,6 @@ Secrets can optionally be loaded from AWS Secrets Manager.
 
 import logging
 import os
-from pathlib import Path
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -73,16 +72,6 @@ class Settings(BaseSettings):
         default=False,
         description="Enable auto-reload for development (set to True in dev mode)",
     )
-    GRADIO_HOST: str = Field(
-        default="0.0.0.0",
-        description="Gradio frontend server host",
-    )
-    GRADIO_PORT: int = Field(
-        default=7860,
-        description="Gradio frontend server port",
-        ge=1024,
-        le=65535,
-    )
 
     # ========== API Configuration ==========
     API_TITLE: str = Field(
@@ -110,6 +99,10 @@ class Settings(BaseSettings):
     AWS_PROFILE: str | None = Field(
         default=None,
         description="AWS profile name (optional, for local development)",
+    )
+    AWS_BEARER_TOKEN_BEDROCK: str | None = Field(
+        default=None,
+        description="AWS Bearer Token for Bedrock API (alternative to Access Key credentials)",
     )
 
     # ========== Database ==========
@@ -184,9 +177,13 @@ class Settings(BaseSettings):
     )
 
     # ========== Bedrock Models ==========
-    LLM_MODEL_ID: str = Field(
-        default="anthropic.claude-3-5-sonnet-20240620-v1:0",
-        description="Amazon Bedrock LLM model ID",
+    CONVERSATION_LLM_MODEL_ID: str = Field(
+        default="amazon.nova-lite-v1:0",
+        description="Amazon Bedrock LLM model ID for conversation responses",
+    )
+    TITLE_LLM_MODEL_ID: str = Field(
+        default="amazon.nova-lite-v1:0",
+        description="Amazon Bedrock LLM model ID for title generation",
     )
     EMBEDDING_MODEL_ID: str = Field(
         default="cohere.embed-v4:0",
@@ -255,7 +252,7 @@ class Settings(BaseSettings):
         ge=1,
     )
 
-    @field_validator("UVICORN_PORT", "GRADIO_PORT")
+    @field_validator("UVICORN_PORT")
     @classmethod
     def validate_port(cls, v: int) -> int:
         """Validate port number is in valid range."""
@@ -284,7 +281,16 @@ class Settings(BaseSettings):
     def validate_cors_origins(cls, v) -> list[str]:
         """Parse CORS origins from string or list."""
         if isinstance(v, str):
-            # Support comma-separated string
+            # Try parsing as JSON first (for Lambda env vars)
+            import json
+
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return parsed
+            except (json.JSONDecodeError, ValueError):
+                pass
+            # Fallback to comma-separated string
             return [origin.strip() for origin in v.split(",")]
         return v
 

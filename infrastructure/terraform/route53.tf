@@ -49,10 +49,30 @@ resource "aws_acm_certificate_validation" "frontend" {
   validation_record_fqdns = [for record in aws_route53_record.frontend_cert_validation : record.fqdn]
 }
 
-# Custom domain association for App Runner
-# Note: After creation, App Runner will provide validation records
-# You'll need to add those records to Route 53 manually or run terraform apply again
-resource "aws_apprunner_custom_domain_association" "frontend" {
-  domain_name = "ting-hr-chatbot.goingcloud.ai"
-  service_arn = aws_apprunner_service.hr-chatbot-frontend.arn
+# A record pointing to CloudFront distribution
+resource "aws_route53_record" "frontend" {
+  provider = aws.route53
+  zone_id  = data.aws_route53_zone.goingcloud.zone_id
+  name     = "ting-hr-chatbot.goingcloud.ai"
+  type     = "A"
+
+  alias {
+    name                   = aws_cloudfront_distribution.frontend.domain_name
+    zone_id                = aws_cloudfront_distribution.frontend.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+# AAAA record for IPv6 support
+resource "aws_route53_record" "frontend_ipv6" {
+  provider = aws.route53
+  zone_id  = data.aws_route53_zone.goingcloud.zone_id
+  name     = "ting-hr-chatbot.goingcloud.ai"
+  type     = "AAAA"
+
+  alias {
+    name                   = aws_cloudfront_distribution.frontend.domain_name
+    zone_id                = aws_cloudfront_distribution.frontend.hosted_zone_id
+    evaluate_target_health = false
+  }
 }
