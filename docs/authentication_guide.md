@@ -5,6 +5,7 @@
 ## 概述
 
 系統現在使用完整的用戶帳號管理，包含：
+
 - ✅ 用戶註冊（username + email + password）
 - ✅ 密碼加密（bcrypt）
 - ✅ JWT Token 認證
@@ -104,16 +105,18 @@ alembic upgrade head
 **POST** `/auth/register`
 
 **Request Body:**
+
 ```json
 {
   "username": "john_doe",
   "email": "john@example.com",
   "password": "SecurePassword123",
-  "full_name": "John Doe"  // optional
+  "full_name": "John Doe" // optional
 }
 ```
 
 **Response:**
+
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -125,6 +128,7 @@ alembic upgrade head
 ```
 
 **Status Codes:**
+
 - `201 Created`: 註冊成功
 - `400 Bad Request`: 用戶名或 email 已存在
 
@@ -133,6 +137,7 @@ alembic upgrade head
 **POST** `/auth/login`
 
 **Request Body:**
+
 ```json
 {
   "username": "john_doe",
@@ -141,6 +146,7 @@ alembic upgrade head
 ```
 
 **Response:**
+
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -152,6 +158,7 @@ alembic upgrade head
 ```
 
 **Status Codes:**
+
 - `200 OK`: 登入成功
 - `401 Unauthorized`: 用戶名或密碼錯誤
 
@@ -210,10 +217,11 @@ curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
 ### JWT Token 內容
 
 Token 包含：
+
 ```json
 {
-  "sub": "550e8400-e29b-41d4-a716-446655440000",  // user_id
-  "exp": 1234567890  // expiration timestamp
+  "sub": "550e8400-e29b-41d4-a716-446655440000", // user_id
+  "exp": 1234567890 // expiration timestamp
 }
 ```
 
@@ -278,19 +286,19 @@ def get_current_user_info(current_user: CurrentUser) -> dict:
 
 ```javascript
 async function register(username, email, password) {
-  const response = await fetch('http://localhost:8000/auth/register', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, email, password })
+  const response = await fetch("http://localhost:8000/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, email, password }),
   });
 
   if (response.ok) {
     const data = await response.json();
     // 儲存 token
-    localStorage.setItem('access_token', data.access_token);
+    localStorage.setItem("access_token", data.access_token);
     return data;
   } else {
-    throw new Error('Registration failed');
+    throw new Error("Registration failed");
   }
 }
 ```
@@ -299,18 +307,18 @@ async function register(username, email, password) {
 
 ```javascript
 async function login(username, password) {
-  const response = await fetch('http://localhost:8000/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password })
+  const response = await fetch("http://localhost:8000/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
   });
 
   if (response.ok) {
     const data = await response.json();
-    localStorage.setItem('access_token', data.access_token);
+    localStorage.setItem("access_token", data.access_token);
     return data;
   } else {
-    throw new Error('Login failed');
+    throw new Error("Login failed");
   }
 }
 ```
@@ -319,15 +327,15 @@ async function login(username, password) {
 
 ```javascript
 async function sendMessage(message) {
-  const token = localStorage.getItem('access_token');
+  const token = localStorage.getItem("access_token");
 
-  const response = await fetch('http://localhost:8000/chat/message', {
-    method: 'POST',
+  const response = await fetch("http://localhost:8000/chat/message", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ message })
+    body: JSON.stringify({ message }),
   });
 
   return response.json();
@@ -385,11 +393,13 @@ curl -X POST http://localhost:8000/chat/message \
 如果你已經有使用舊的簡易認證系統：
 
 #### 步驟 1: 備份資料
+
 ```bash
 pg_dump hr_chatbot > backup.sql
 ```
 
 #### 步驟 2: 重建資料庫
+
 ```bash
 dropdb hr_chatbot
 createdb hr_chatbot
@@ -399,6 +409,7 @@ createdb hr_chatbot
 #### 步驟 3: 更新前端程式碼
 
 **Gradio** (`src/app.py`):
+
 - 移除 `X-User-Id` header
 - 改用 `Authorization: Bearer <token>` header
 - 更新登入流程（username + password）
@@ -446,6 +457,7 @@ response = requests.post(
 **原因**: `.env` 缺少 `SECRET_KEY`
 
 **解決**:
+
 ```bash
 python scripts/generate_secret_key.py
 # 將生成的 key 加入 .env
@@ -456,6 +468,7 @@ python scripts/generate_secret_key.py
 **原因**: Token 無效或過期
 
 **解決**:
+
 1. 確認 token 格式正確: `Bearer <token>`
 2. 重新登入獲取新 token
 3. 檢查 token 是否過期
@@ -465,6 +478,7 @@ python scripts/generate_secret_key.py
 **原因**: Token 中的 user_id 在資料庫中不存在
 
 **解決**:
+
 1. 重新註冊或登入
 2. 檢查資料庫是否正確遷移
 

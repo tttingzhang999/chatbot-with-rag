@@ -2,12 +2,12 @@
 # See https://pre-commit.com for more information
 
 default_language_version:
-  python: python3.11
+  python: python3
 
 repos:
   # Ruff - Fast Python linter and formatter
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.15
+    rev: v0.14.7
     hooks:
       # Run the linter
       - id: ruff
@@ -19,18 +19,18 @@ repos:
 
   # General file checks
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       # Prevent committing large files
       - id: check-added-large-files
-        args: ['--maxkb=1000']
+        args: ["--maxkb=1000"]
       # Check for files that would conflict in case-insensitive filesystems
       - id: check-case-conflict
       # Check for merge conflict markers
       - id: check-merge-conflict
       # Check YAML files
       - id: check-yaml
-        exclude: ^alembic/
+        exclude: ^(alembic/|apps/backend/alembic/)
       # Check TOML files
       - id: check-toml
       # Check JSON files
@@ -39,10 +39,10 @@ repos:
       - id: detect-private-key
       # Fix end of files
       - id: end-of-file-fixer
-        exclude: ^alembic/versions/
+        exclude: ^(alembic/versions/|apps/backend/alembic/versions/)
       # Remove trailing whitespace
       - id: trailing-whitespace
-        exclude: ^alembic/versions/
+        exclude: ^(alembic/versions/|apps/backend/alembic/versions/)
       # Check executables have shebangs
       - id: check-executables-have-shebangs
       # Check shebangs are valid
@@ -50,20 +50,20 @@ repos:
 
   # Check for common security issues
   - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.5
+    rev: 1.9.2
     hooks:
       - id: bandit
-        args: ["-c", "pyproject.toml"]
+        args: ["-c", "apps/backend/pyproject.toml"]
         additional_dependencies: ["bandit[toml]"]
-        exclude: ^tests/
+        exclude: ^(tests/|apps/frontend/)
 
   # Markdown formatting
   - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v3.1.0
+    rev: v4.0.0-alpha.8
     hooks:
       - id: prettier
         types_or: [markdown, yaml, json]
-        exclude: ^(alembic/|\.venv/)
+        exclude: ^(alembic/|apps/backend/alembic/|\.venv/|node_modules/)
 
 # Configure pre-commit.ci (optional)
 ci:
@@ -72,8 +72,8 @@ ci:
 
     for more information, see https://pre-commit.ci
   autofix_prs: true
-  autoupdate_branch: ''
-  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_branch: ""
+  autoupdate_commit_msg: "[pre-commit.ci] pre-commit autoupdate"
   autoupdate_schedule: weekly
   skip: []
   submodules: false

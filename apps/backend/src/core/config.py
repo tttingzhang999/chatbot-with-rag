@@ -59,7 +59,7 @@ class Settings(BaseSettings):
 
     # ========== Server Configuration ==========
     UVICORN_HOST: str = Field(
-        default="0.0.0.0",
+        default="0.0.0.0",  # nosec B104 - Required for Docker/container environments
         description="FastAPI/Uvicorn server host",
     )
     UVICORN_PORT: int = Field(
@@ -262,7 +262,7 @@ class Settings(BaseSettings):
 
     @field_validator("CHUNK_OVERLAP")
     @classmethod
-    def validate_chunk_overlap(cls, v: int, info) -> int:
+    def validate_chunk_overlap(cls, v: int, _info) -> int:
         """Validate chunk overlap is less than chunk size."""
         # Note: chunk_size might not be set yet during validation
         # We'll do runtime validation in the document service

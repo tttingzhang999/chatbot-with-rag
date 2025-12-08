@@ -29,14 +29,14 @@ python scripts/generate_secret_key.py
 
 ### 📝 常用指令
 
-| 功能 | 指令 |
-|------|------|
+| 功能           | 指令                                               |
+| -------------- | -------------------------------------------------- |
 | 建立資料庫遷移 | `uv run alembic revision --autogenerate -m "說明"` |
-| 套用資料庫遷移 | `uv run alembic upgrade head` |
-| 程式碼檢查 | `ruff check .` |
-| 自動修復 | `ruff check --fix .` |
-| 格式化程式碼 | `ruff format .` |
-| 執行測試 | `pytest` |
+| 套用資料庫遷移 | `uv run alembic upgrade head`                      |
+| 程式碼檢查     | `ruff check .`                                     |
+| 自動修復       | `ruff check --fix .`                               |
+| 格式化程式碼   | `ruff format .`                                    |
+| 執行測試       | `pytest`                                           |
 
 ### 📚 重要文件
 
@@ -112,53 +112,60 @@ User Question → Embedding → Hybrid Search (Semantic + BM25) → Retrieved Ch
 ### AWS 服務架構
 
 #### 資料儲存與管理
+
 - **Amazon Aurora PostgreSQL Serverless** - 主要資料庫，儲存處理後的文件與向量資料
 - **Amazon S3** - 儲存原始文件（Raw Data）
 - **AWS Secrets Manager** - 管理資料庫連線金鑰與敏感資訊
 
 #### AI/ML 服務
+
 - **Amazon Bedrock**
   - **Claude Sonnet 4** - 用於多輪對話的 LLM 模型
   - **Cohere Embed v4** - 用於文件 Embedding 的模型
 
 #### 運算與部署
+
 - **AWS Lambda** - 執行文件前處理與 Chatbot 後端邏輯（Container Image 方式）
 - **Amazon ECR** - 儲存 Docker 映像檔
 - **AWS IAM** - 權限管理與角色設定
 
 #### 網路與對外服務
+
 - **Amazon API Gateway** - 建立 REST API，提供 `/chat`、`/query` 等路由
 - **AWS Certificate Manager** - SSL 憑證管理
 - **Amazon Route 53** - DNS 管理，設定自訂網域（.goingcloud.ai）
 
 #### 開發工具
+
 - **AWS Vault** - 本地開發時的 AWS credentials 管理工具
 
 ### AWS vs GCP 服務對照
 
-| 功能 | GCP | AWS (本專案使用) |
-|------|-----|------------------|
-| 關聯式資料庫 | Cloud SQL | Aurora PostgreSQL Serverless |
-| 物件儲存 | Cloud Storage | S3 |
-| Serverless 運算 | Cloud Functions | Lambda |
-| 容器註冊表 | Artifact Registry | ECR |
-| API 管理 | API Gateway / Cloud Endpoints | API Gateway |
-| 密鑰管理 | Secret Manager | Secrets Manager |
-| DNS | Cloud DNS | Route 53 |
-| 憑證管理 | Certificate Manager | Certificate Manager |
-| AI/ML 平台 | Vertex AI | Bedrock |
+| 功能            | GCP                           | AWS (本專案使用)             |
+| --------------- | ----------------------------- | ---------------------------- |
+| 關聯式資料庫    | Cloud SQL                     | Aurora PostgreSQL Serverless |
+| 物件儲存        | Cloud Storage                 | S3                           |
+| Serverless 運算 | Cloud Functions               | Lambda                       |
+| 容器註冊表      | Artifact Registry             | ECR                          |
+| API 管理        | API Gateway / Cloud Endpoints | API Gateway                  |
+| 密鑰管理        | Secret Manager                | Secrets Manager              |
+| DNS             | Cloud DNS                     | Route 53                     |
+| 憑證管理        | Certificate Manager           | Certificate Manager          |
+| AI/ML 平台      | Vertex AI                     | Bedrock                      |
 
 ## 核心功能
 
 ### 1. 使用者認證系統 ✅
 
 **已實作功能**:
+
 - JWT-based 認證機制
 - 使用者註冊與登入
 - 密碼安全儲存（bcrypt hashing）
 - Token 管理與驗證
 
 **技術實作**:
+
 - FastAPI 認證依賴注入
 - SQLAlchemy ORM
 - python-jose 與 passlib
@@ -166,6 +173,7 @@ User Question → Embedding → Hybrid Search (Semantic + BM25) → Retrieved Ch
 ### 2. 多輪對話系統 ✅
 
 **已實作功能**:
+
 - 整合 AWS Bedrock Claude Sonnet 4
 - 多輪對話與上下文管理
 - 對話歷史儲存與檢索
@@ -173,6 +181,7 @@ User Question → Embedding → Hybrid Search (Semantic + BM25) → Retrieved Ch
 - 支援 RAG 增強回應
 
 **技術實作**:
+
 - LangChain 框架整合
 - 對話歷史資料庫儲存
 - Context window 管理（可設定歷史輪數）
@@ -181,18 +190,21 @@ User Question → Embedding → Hybrid Search (Semantic + BM25) → Retrieved Ch
 ### 3. 文件處理系統 ⏳
 
 **已實作**:
+
 - 多檔案上傳支援（PDF、DOCX、TXT、DOC）
 - 基本文件解析（pypdf、python-docx）
 - 文件分段（chunking）策略
 - 文件資料庫儲存
 
 **待完成**:
+
 - Embedding 生成（Cohere Embed v4）
 - BM25 索引建立
 - S3 儲存整合（生產環境）
 - Lambda 觸發處理流程
 
 **技術要點**:
+
 - 所有前處理透過程式碼自動化
 - PostgreSQL + pgvector 儲存向量資料
 - 配置化的 chunk size 與 overlap
@@ -202,11 +214,13 @@ User Question → Embedding → Hybrid Search (Semantic + BM25) → Retrieved Ch
 **目標**: 建構 Hybrid Search 功能，找到最佳的 RAG Hyperparameters
 
 **規劃實作**:
+
 - **Semantic Search**: 使用向量相似度（Cosine Similarity）
 - **BM25**: 基於 TFIDF 的關鍵字搜尋
 - **Hybrid Search**: 結合兩種方法（可調整比例）
 
 **Hyperparameters 調整方向**:
+
 - Chunk size（預設 512 字元）
 - Overlap size（預設 128 字元）
 - Top-K chunks（預設 10）
@@ -214,6 +228,7 @@ User Question → Embedding → Hybrid Search (Semantic + BM25) → Retrieved Ch
 - Relevance threshold（預設 0.3）
 
 **目前狀態**:
+
 - ✅ 建立基礎架構（retrieval_service.py）
 - ⏳ 待整合 embedding 模型
 - ⏳ 待實作搜尋演算法
@@ -221,6 +236,7 @@ User Question → Embedding → Hybrid Search (Semantic + BM25) → Retrieved Ch
 ### 5. Gradio 前端界面 ✅
 
 **已實作功能**:
+
 - 現代化登入界面（含註冊/登入切換）
 - 即時對話界面
 - 對話歷史側邊欄
@@ -229,6 +245,7 @@ User Question → Embedding → Hybrid Search (Semantic + BM25) → Retrieved Ch
 - 自訂品牌樣式（bot avatar）
 
 **技術特點**:
+
 - RESTful API 整合
 - 非同步請求處理
 - Session 管理
@@ -237,6 +254,7 @@ User Question → Embedding → Hybrid Search (Semantic + BM25) → Retrieved Ch
 ## 技術棧
 
 ### 後端框架
+
 - **Web 框架**: FastAPI (高效能 async Python web framework)
 - **ASGI 伺服器**: Uvicorn
 - **ORM**: SQLAlchemy 2.0
@@ -245,11 +263,13 @@ User Question → Embedding → Hybrid Search (Semantic + BM25) → Retrieved Ch
 - **驗證與授權**: JWT (python-jose) + bcrypt (passlib)
 
 ### 前端
+
 - **UI 框架**: Gradio 4.x
 - **API 通訊**: HTTP/REST
 - **樣式**: 自訂 CSS + Gradio Blocks
 
 ### AI/ML 服務
+
 - **LLM**: Claude 3.5 Sonnet (Amazon Bedrock)
   - Model ID: `anthropic.claude-3-5-sonnet-20240620-v1:0`
 - **Embedding**: Cohere Embed v4 (Amazon Bedrock) - 待整合
@@ -257,12 +277,14 @@ User Question → Embedding → Hybrid Search (Semantic + BM25) → Retrieved Ch
   - 維度: 1536
 
 ### 資料庫
+
 - **本地開發**: PostgreSQL 14+
 - **生產環境**: Aurora PostgreSQL Serverless
 - **向量擴充**: pgvector
 - **資料處理**: pypdf, python-docx
 
 ### AWS 服務
+
 - **運算**: Lambda (Container Image from ECR)
 - **儲存**: S3 (documents), Aurora PostgreSQL (vectors + metadata)
 - **AI/ML**: Bedrock (Claude, Cohere)
@@ -270,6 +292,7 @@ User Question → Embedding → Hybrid Search (Semantic + BM25) → Retrieved Ch
 - **安全**: Secrets Manager, IAM
 
 ### 開發工具
+
 - **套件管理**: uv (快速 Python 套件管理器)
 - **程式碼品質**:
   - Linter: ruff
@@ -320,19 +343,19 @@ cp .env.example .env
 
 以下為**必須設定**的環境變數：
 
-| 變數名稱 | 說明 | 範例值 | 如何產生 |
-|---------|------|--------|---------|
-| `SECRET_KEY` | JWT token 簽署金鑰 | `a1b2c3d4e5f6...` | `openssl rand -hex 32` |
+| 變數名稱       | 說明                      | 範例值                                                     | 如何產生                  |
+| -------------- | ------------------------- | ---------------------------------------------------------- | ------------------------- |
+| `SECRET_KEY`   | JWT token 簽署金鑰        | `a1b2c3d4e5f6...`                                          | `openssl rand -hex 32`    |
 | `DATABASE_URL` | PostgreSQL 資料庫連線字串 | `postgresql://postgres:password@localhost:5432/hr_chatbot` | 參考 `scripts/init_db.sh` |
 
 #### AWS 相關環境變數（需使用 Bedrock 時）
 
-| 變數名稱 | 說明 | 預設值 | 備註 |
-|---------|------|--------|------|
-| `AWS_REGION` | AWS 服務區域 | `us-east-1` | 使用 Bedrock 時必填 |
-| `AWS_PROFILE` | AWS 設定檔名稱 | - | 本地開發用 aws-vault 時需要 |
-| `DB_SECRET_NAME` | AWS Secrets Manager 金鑰名稱 | - | 僅生產環境需要 |
-| `DOCUMENT_BUCKET` | S3 儲存桶名稱 | - | 僅生產環境需要 |
+| 變數名稱          | 說明                         | 預設值      | 備註                        |
+| ----------------- | ---------------------------- | ----------- | --------------------------- |
+| `AWS_REGION`      | AWS 服務區域                 | `us-east-1` | 使用 Bedrock 時必填         |
+| `AWS_PROFILE`     | AWS 設定檔名稱               | -           | 本地開發用 aws-vault 時需要 |
+| `DB_SECRET_NAME`  | AWS Secrets Manager 金鑰名稱 | -           | 僅生產環境需要              |
+| `DOCUMENT_BUCKET` | S3 儲存桶名稱                | -           | 僅生產環境需要              |
 
 #### 可選環境變數（有預設值）
 
@@ -445,6 +468,7 @@ python scripts/test_api.py
 ```
 
 **存取應用程式**：
+
 - 🌐 前端界面: http://localhost:7860
 - 📚 API 文件: http://localhost:8000/docs
 - 🔧 OpenAPI JSON: http://localhost:8000/openapi.json

@@ -170,6 +170,7 @@ echo "Backend Image URI: $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/hr-ch
 ```
 
 **輸出示例**:
+
 ```
 Backend Image URI: 123456789012.dkr.ecr.ap-northeast-1.amazonaws.com/hr-chatbot-backend:v0.6.0
 ```
@@ -206,6 +207,7 @@ echo "Frontend Image URI: $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/hr-c
 ```
 
 **輸出示例**:
+
 ```
 Frontend Image URI: 123456789012.dkr.ecr.ap-northeast-1.amazonaws.com/hr-chatbot-frontend:v0.6.0
 ```
@@ -240,11 +242,13 @@ AWS_REGION=ap-northeast-1 IMAGE_TAG=v0.6.0 ./scripts/deploy_to_ecr.sh all
 前往 **Configuration** 標籤：
 
 **General configuration**:
+
 - **Memory**: 1024 MB
 - **Timeout**: 30 seconds
 - **Ephemeral storage**: 512 MB（預設即可）
 
 **Environment variables**:
+
 ```
 AWS_REGION = ap-northeast-1
 DB_SECRET_NAME = hr-chatbot/database
@@ -267,18 +271,17 @@ EMBEDDING_MODEL_ID = cohere.embed-multilingual-v3
    - `AWSLambdaVPCAccessExecutionRole`
 
 **自定義 RDS Policy**（最小權限原則）:
+
 ```json
 {
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "rds-db:connect"
-            ],
-            "Resource": "arn:aws:rds-db:ap-northeast-1:*:dbuser:*/*"
-        }
-    ]
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["rds-db:connect"],
+      "Resource": "arn:aws:rds-db:ap-northeast-1:*:dbuser:*/*"
+    }
+  ]
 }
 ```
 
@@ -361,13 +364,15 @@ https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com
 ```
 
 **測試 API**:
+
 ```bash
 curl https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/health
 ```
 
 預期輸出:
+
 ```json
-{"status": "healthy"}
+{ "status": "healthy" }
 ```
 
 ### 8. 部署 Frontend (Gradio on ECS Fargate)
@@ -388,9 +393,11 @@ curl https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/health
 3. 配置：
 
 **Task definition family**:
+
 - **Task definition family name**: `hr-chatbot-frontend`
 
 **Infrastructure requirements**:
+
 - **Launch type**: AWS Fargate
 - **Operating system/Architecture**: Linux/X86_64
 - **Task size**:
@@ -398,6 +405,7 @@ curl https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/health
   - **Memory**: 1 GB
 
 **Container - 1**:
+
 - **Container name**: `frontend`
 - **Image URI**: 貼上步驟 5.2 的 Frontend Image URI
 - **Port mappings**:
@@ -412,6 +420,7 @@ curl https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/health
   ```
 
 **Log collection** (CloudWatch Logs):
+
 - 啟用 **Use log collection**
 - 使用自動創建的 Log group
 
@@ -425,15 +434,18 @@ curl https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/health
 4. 配置：
 
 **Basic configuration**:
+
 - **Load balancer name**: `hr-chatbot-frontend-alb`
 - **Scheme**: Internet-facing
 - **IP address type**: IPv4
 
 **Network mapping**:
+
 - **VPC**: 選擇你的 VPC
 - **Mappings**: 選擇至少 2 個可用區域的公有子網
 
 **Security groups**:
+
 - 創建新的 Security Group:
   - **Name**: `hr-chatbot-alb-sg`
   - **Inbound rules**:
@@ -441,6 +453,7 @@ curl https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/health
     - HTTPS (443) from 0.0.0.0/0
 
 **Listeners and routing**:
+
 - **Listener 1**:
   - **Protocol**: HTTP
   - **Port**: 80
@@ -461,16 +474,19 @@ curl https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/health
 3. 配置：
 
 **Environment**:
+
 - **Compute options**: Launch type
 - **Launch type**: FARGATE
 
 **Deployment configuration**:
+
 - **Application type**: Service
 - **Task definition**: `hr-chatbot-frontend` (latest)
 - **Service name**: `frontend-service`
 - **Desired tasks**: 1
 
 **Networking**:
+
 - **VPC**: 選擇 ALB 所在的 VPC
 - **Subnets**: 選擇私有子網（或公有子網，如果沒有 NAT Gateway）
 - **Security group**: 創建新的
@@ -479,6 +495,7 @@ curl https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/health
     - Custom TCP (7860) from ALB Security Group
 
 **Load balancing**:
+
 - **Load balancer type**: Application Load Balancer
 - **Load balancer**: `hr-chatbot-frontend-alb`
 - **Listener**: 80:HTTP
@@ -586,6 +603,7 @@ curl -I https://hr-chatbot.going.cloud
 #### 11.1 測試 Backend Lambda
 
 **通過 API Gateway**:
+
 ```bash
 # 健康檢查
 curl https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/health
@@ -600,6 +618,7 @@ curl -X POST https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/chat \
 ```
 
 預期回應:
+
 ```json
 {
   "response": "根據目前的規定，勞保的投保薪資上限是...",
@@ -610,11 +629,13 @@ curl -X POST https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/chat \
 #### 11.2 測試 Frontend
 
 **瀏覽器訪問**:
+
 ```
 https://hr-chatbot.going.cloud
 ```
 
 **功能測試**:
+
 1. ✅ 頁面正常載入
 2. ✅ 聊天輸入框可用
 3. ✅ 發送訊息後收到回應
@@ -641,12 +662,14 @@ curl -X POST https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/query \
 #### 12.1 CloudWatch Logs
 
 **Backend Lambda Logs**:
+
 ```bash
 # 查看最近的日誌
 aws-vault exec <your-profile> -- aws logs tail /aws/lambda/hr-chatbot-backend --follow
 ```
 
 **Frontend ECS Logs**:
+
 ```bash
 # 查看 Fargate 容器日誌
 aws-vault exec <your-profile> -- aws logs tail /ecs/hr-chatbot-frontend --follow
@@ -657,22 +680,26 @@ aws-vault exec <your-profile> -- aws logs tail /ecs/hr-chatbot-frontend --follow
 前往 [CloudWatch Console](https://ap-northeast-1.console.aws.amazon.com/cloudwatch/home?region=ap-northeast-1) 查看：
 
 **Lambda Metrics**:
+
 - Invocations (請求數)
 - Duration (執行時間)
 - Errors (錯誤數)
 - Throttles (限流數)
 
 **API Gateway Metrics**:
+
 - Count (請求總數)
 - 4XXError (客戶端錯誤)
 - 5XXError (服務端錯誤)
 - Latency (延遲)
 
 **ECS Metrics**:
+
 - CPUUtilization (CPU 使用率)
 - MemoryUtilization (記憶體使用率)
 
 **ALB Metrics**:
+
 - TargetResponseTime (目標回應時間)
 - HealthyHostCount (健康主機數)
 - RequestCount (請求數)
@@ -684,16 +711,19 @@ aws-vault exec <your-profile> -- aws logs tail /ecs/hr-chatbot-frontend --follow
 ### 13. 成本優化建議
 
 #### 13.1 Lambda 優化
+
 - **預留併發**（Provisioned Concurrency）: 如果流量穩定，可避免冷啟動
 - **ARM64 架構**: 比 x86_64 便宜 20%，但需重新構建映像
 - **記憶體調整**: 根據實際使用情況調整（CloudWatch Insights 分析）
 
 #### 13.2 Aurora 優化
+
 - **Aurora Serverless v2**: 按需自動擴展，低流量時成本更低
 - **Data API**: 考慮使用 Data API 替代持久連接
 - **定期備份**: 配置自動快照保留策略
 
 #### 13.3 ECS/Fargate 優化
+
 - **Fargate Spot**: 非關鍵環境使用 Spot instances（最多省 70%）
 - **Auto Scaling**: 根據 CPU/記憶體使用率自動擴展
 - **Task 大小**: 根據實際需求調整 vCPU 和記憶體
@@ -701,12 +731,14 @@ aws-vault exec <your-profile> -- aws logs tail /ecs/hr-chatbot-frontend --follow
 #### 13.4 估算月度成本
 
 假設流量（僅供參考）:
+
 - Lambda: 100,000 次請求/月，平均執行時間 2 秒
 - Fargate: 1 個 Task (0.5 vCPU, 1 GB) 持續運行
 - Aurora Serverless v2: 最小 0.5 ACU
 - ALB: 100 GB 數據傳輸/月
 
 **估算**:
+
 - Lambda: ~$5/月
 - Fargate: ~$25/月
 - Aurora: ~$50/月
@@ -720,6 +752,7 @@ aws-vault exec <your-profile> -- aws logs tail /ecs/hr-chatbot-frontend --follow
 #### 14.1 網路安全
 
 **啟用 WAF (Web Application Firewall)**:
+
 1. 前往 WAF Console
 2. 創建 Web ACL
 3. 關聯到 ALB
@@ -728,6 +761,7 @@ aws-vault exec <your-profile> -- aws logs tail /ecs/hr-chatbot-frontend --follow
    - Rate limiting (例如: 2000 requests/5min per IP)
 
 **Security Group 最小權限**:
+
 ```
 ALB Security Group:
   Inbound: 443 from 0.0.0.0/0
@@ -748,6 +782,7 @@ Aurora Security Group:
 #### 14.2 IAM 最小權限
 
 **Lambda Execution Role** 精簡版:
+
 ```json
 {
   "Version": "2012-10-17",
@@ -763,9 +798,7 @@ Aurora Security Group:
     },
     {
       "Effect": "Allow",
-      "Action": [
-        "secretsmanager:GetSecretValue"
-      ],
+      "Action": ["secretsmanager:GetSecretValue"],
       "Resource": [
         "arn:aws:secretsmanager:ap-northeast-1:*:secret:hr-chatbot/database-*",
         "arn:aws:secretsmanager:ap-northeast-1:*:secret:hr-chatbot/app-secrets-*"
@@ -773,9 +806,7 @@ Aurora Security Group:
     },
     {
       "Effect": "Allow",
-      "Action": [
-        "bedrock:InvokeModel"
-      ],
+      "Action": ["bedrock:InvokeModel"],
       "Resource": [
         "arn:aws:bedrock:ap-northeast-1::foundation-model/anthropic.claude-*",
         "arn:aws:bedrock:ap-northeast-1::foundation-model/cohere.embed-*"
@@ -788,15 +819,18 @@ Aurora Security Group:
 #### 14.3 啟用日誌審計
 
 **CloudTrail**:
+
 - 記錄所有 API 調用
 - 啟用管理事件和數據事件
 - 保留至少 90 天
 
 **VPC Flow Logs**:
+
 - 記錄網路流量
 - 發送到 CloudWatch Logs 或 S3
 
 **Config**:
+
 - 追蹤資源配置變更
 - 設定合規性規則
 
@@ -805,20 +839,24 @@ Aurora Security Group:
 #### 15.1 備份策略
 
 **Aurora 自動備份**:
+
 - 保留期: 7 天（建議 30 天）
 - 跨區域複製: 啟用（如需要）
 
 **ECR 映像**:
+
 - 保留多個版本標籤（v0.6.0, v0.6.1 等）
 - 定期清理舊映像
 
 **配置備份**:
+
 - 定期導出 CloudFormation 模板
 - 將 Terraform/IaC 配置存入 Git
 
 #### 15.2 恢復流程
 
 **Lambda 函數回滾**:
+
 ```bash
 # 更新到特定映像版本
 aws lambda update-function-code \
@@ -827,6 +865,7 @@ aws lambda update-function-code \
 ```
 
 **ECS Service 回滾**:
+
 ```bash
 # 更新 Task Definition 到舊版本
 aws ecs update-service \
@@ -836,6 +875,7 @@ aws ecs update-service \
 ```
 
 **資料庫恢復**:
+
 ```bash
 # 從快照恢復
 aws rds restore-db-cluster-from-snapshot \
@@ -848,6 +888,7 @@ aws rds restore-db-cluster-from-snapshot \
 建議使用 GitHub Actions 或 AWS CodePipeline：
 
 **GitHub Actions 範例** (.github/workflows/deploy.yml):
+
 ```yaml
 name: Deploy to AWS
 
@@ -895,11 +936,13 @@ jobs:
 **症狀**: API 請求返回 504 Gateway Timeout
 
 **可能原因**:
+
 - Lambda 執行時間超過 30 秒
 - 資料庫連接緩慢
 - Bedrock API 調用時間過長
 
 **解決方案**:
+
 1. 檢查 CloudWatch Logs 確認實際執行時間
 2. 優化資料庫查詢（添加索引）
 3. 使用 Aurora Proxy 減少連接時間
@@ -910,6 +953,7 @@ jobs:
 **症狀**: 瀏覽器控制台顯示 CORS policy blocked
 
 **解決方案**:
+
 1. 確認 API Gateway CORS 配置正確
 2. 檢查 Lambda response headers 包含 CORS headers
 3. 確保 preflight OPTIONS 請求正常返回
@@ -919,11 +963,13 @@ jobs:
 **症狀**: Lambda logs 顯示 "could not connect to server"
 
 **可能原因**:
+
 - Lambda 不在 VPC 內
 - Security Group 配置錯誤
 - Secrets Manager 憑證錯誤
 
 **解決方案**:
+
 1. 確認 Lambda 配置在正確的 VPC 和子網
 2. 檢查 Security Group 規則
 3. 測試 Secrets Manager 憑證:
@@ -936,10 +982,12 @@ jobs:
 **症狀**: ECS Task 狀態為 STOPPED，錯誤訊息 "CannotPullContainerError"
 
 **可能原因**:
+
 - ECR 映像不存在或權限不足
 - Task Execution Role 缺少 ECR 權限
 
 **解決方案**:
+
 1. 確認映像已成功推送到 ECR
 2. 檢查 Task Execution Role 包含 `AmazonECSTaskExecutionRolePolicy`
 3. 查看 CloudWatch Logs 詳細錯誤訊息
@@ -949,11 +997,13 @@ jobs:
 **症狀**: ALB Target Group 顯示 unhealthy
 
 **可能原因**:
+
 - 應用未在指定端口監聽
 - 健康檢查路徑錯誤
 - Security Group 阻擋流量
 
 **解決方案**:
+
 1. 確認容器正在監聽正確端口（7860）
 2. 檢查健康檢查路徑（Gradio 使用 `/`）
 3. 確認 ECS Security Group 允許來自 ALB 的流量
@@ -963,6 +1013,7 @@ jobs:
 ## 快速參考檢查清單
 
 ### 部署前檢查
+
 - [ ] AWS 憑證已配置（aws-vault）
 - [ ] .env 文件已正確設定
 - [ ] Secrets Manager secrets 已創建
@@ -970,11 +1021,13 @@ jobs:
 - [ ] Docker 已安裝並運行
 
 ### ECR 映像上傳
+
 - [ ] Backend 映像已推送到 ECR
 - [ ] Frontend 映像已推送到 ECR
 - [ ] 已記錄 Image URIs
 
 ### AWS 資源創建
+
 - [ ] Backend Lambda 已創建並配置
 - [ ] Lambda IAM Role 權限正確
 - [ ] Lambda VPC 配置正確（如需要）
@@ -985,6 +1038,7 @@ jobs:
 - [ ] ECS Service 已啟動並健康
 
 ### 域名與 HTTPS
+
 - [ ] SSL 證書已申請並驗證
 - [ ] ALB HTTPS Listener 已配置
 - [ ] HTTP 到 HTTPS 重定向已啟用
@@ -992,6 +1046,7 @@ jobs:
 - [ ] DNS 解析正確
 
 ### 測試驗證
+
 - [ ] Backend API 健康檢查通過
 - [ ] Frontend 頁面可訪問
 - [ ] 聊天功能正常
@@ -1003,20 +1058,24 @@ jobs:
 ## 支援與資源
 
 **內部文檔**:
+
 - [本地開發指南](./local_development.md)
 - [架構文檔](../architecture.md)
 - [CLAUDE.md](../CLAUDE.md)
 
 **AWS 文檔**:
+
 - [Lambda Container Images](https://docs.aws.amazon.com/lambda/latest/dg/images-create.html)
 - [API Gateway HTTP APIs](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api.html)
 - [ECS Fargate](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html)
 - [Aurora PostgreSQL](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.AuroraPostgreSQL.html)
 
 **專案資源**:
+
 - Google Drive: https://drive.google.com/drive/u/1/folders/1KHnvLLubLUTg5nwfR3dZKgfWanQXw7UQ
 
 **聯絡人**:
+
 - Project Lead: Ting Zhang
 - Mentor: Micheal
 

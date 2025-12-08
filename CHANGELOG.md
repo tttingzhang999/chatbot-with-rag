@@ -9,20 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Terraform deployments for AWS infrastructure:**  
+- **Terraform deployments for AWS infrastructure:**
   - All-in-one IaC for end-to-end deployment on AWS, including VPC setup, public/private subnets, networking (security groups, endpoints), RDS Aurora PostgreSQL, Lambda backend, App Runner frontend, S3, and required Secrets Manager entries.
   - `main.tf` with provider and backend config, supports cross-account Route 53 management and ACM certificate for App Runner domain.
   - `vpc.tf`, `database.tf`, `lambda.tf`, `apprunner.tf`, `route53.tf`, `outputs.tf`, `s3.tf`, `secret.tf` — modular Terraform configs for all major infra resources now included.
-- **App Runner TLS/Domain automation:**  
+- **App Runner TLS/Domain automation:**
   - Automatic ACM certificate creation and DNS validation for App Runner HTTPS custom domain (`ting-hr-chatbot.goingcloud.ai`) using Route 53 in separate AWS account.
   - Output variables for validation, DNS targets, and troubleshooting.
-- **Lambda/Container deployment clarifications:**  
+- **Lambda/Container deployment clarifications:**
   - All environments, roles, networking and image refs for Lambda and App Runner now managed via Terraform variables and outputs.
   - Includes automation notes for image versioning and role ARNs.
 
 ### Changed
 
-- **uv.lock / requirements updates:**  
+- **uv.lock / requirements updates:**
   - Added `mangum` (`0.19.0`) to dependencies for Lambda ASGI compatibility.
 
 ### Migration & Usage Notes
@@ -75,12 +75,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [architecture.md](./architecture.md): System design, cloud-native patterns, and user/session flow.
 - See CHANGELOG below for real-world fixes, migration steps, and troubleshooting cheatsheet, updated for 2025 cloud deployment.
 
-
 ## [0.6.0] 2025-12-01 - Frontend Refactor, Session Management, AWS Secrets
 
 ### Added
 
-- **Embedding dimension migration**: Database `document_chunks.embedding` column was migrated from dimension 1024 to 1536 to support improved embedding models. See Alembic migration `9ff57d084d8a_change_embedding_dimension_from_1024_to_.py`. *(All existing chunk vectors must be re-embedded to avoid incompatible shape errors.)*
+- **Embedding dimension migration**: Database `document_chunks.embedding` column was migrated from dimension 1024 to 1536 to support improved embedding models. See Alembic migration `9ff57d084d8a_change_embedding_dimension_from_1024_to_.py`. _(All existing chunk vectors must be re-embedded to avoid incompatible shape errors.)_
 - **Support for more document types in uploads**: Backend and frontend now allow PDF, DOCX, and TXT document upload. Dependencies `pypdf` and `python-docx` added to project.
 - **New local-only testing scripts**:
   - `scripts/test_basic_processing.py`: Tests document text extraction, chunking, and DB integration without AWS (fast local dry-run).
@@ -177,8 +176,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - This update prioritizes a streamlined user experience for batch uploading, robust per-file error handling, and improved observability in both backend and frontend flows.
 
-
-
 ## [0.4.1] - 2025-11-28 - PDF parsing improvements
 
 #### Changed
@@ -197,8 +194,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed an extraction bug where empty or whitespace-only extracted text could cause errors downstream by validating content and erroring more gracefully.
 - PDF and DOCX text extraction now removes excess whitespace, ensures proper newline handling, and is more robust to file encoding issues.
-
-
 
 ## [0.4.0] - 2025-11-28 - File Uploads, Parsing, and Document Support
 
@@ -238,7 +233,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Deprecated
 
 - No deprecations in this release.
-
 
 ## [0.3.0] - 2025-11-26 - AWS Bedrock Integration
 
@@ -287,10 +281,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Echo-based chat responses have been removed in favor of direct Claude Sonnet 4 integration.
 
-
 ### Added
 
 #### Authentication & Security
+
 - User registration system with email validation
   - `POST /auth/register` - New user registration endpoint
   - Full name field support (optional)
@@ -301,6 +295,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Secure user session management in frontend
 
 #### Document Processing & Management
+
 - Document processor service (`src/services/document_service.py`)
   - Chunking strategy with configurable size and overlap
   - Text extraction from PDF, DOCX, and TXT files
@@ -315,6 +310,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Document metadata tracking (file size, type, chunk count, upload date)
 
 #### Database & Models
+
 - New database migration: `34c68b28c841_add_user_id_status_and_error_message_to_`
   - Added `user_id` foreign key to documents table (CASCADE on delete)
   - Added `status` field (varchar 20) for processing status
@@ -323,6 +319,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Database session improvements for background tasks
 
 #### Frontend (Gradio)
+
 - Complete UI redesign with tabbed interface:
   - Registration tab (index 0) - New user registration form
   - Login tab (index 1) - User authentication
@@ -348,6 +345,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Chinese language UI (Traditional Chinese)
 
 #### Documentation
+
 - Database migrations guide in `CLAUDE.md`
   - Alembic command reference
   - Best practices for migrations
@@ -357,6 +355,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 #### API Routes
+
 - **Upload route** (`src/api/routes/upload.py`) - Complete rewrite:
   - From simple file acceptance to full document processing
   - Added background task integration
@@ -370,6 +369,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Returns message count directly from query
 
 #### Frontend
+
 - Gradio interface completely redesigned:
   - From simple login/chat to full-featured application
   - Multi-tab navigation system
@@ -383,6 +383,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Button state management based on auth status
 
 #### Configuration
+
 - Database session management updated for background task support
 - API dependency injection for better session handling
 
@@ -446,6 +447,7 @@ uv run alembic current
 ### Added
 
 #### Database & Models
+
 - PostgreSQL database schema with 5 tables (users, documents, document_chunks, conversations, messages)
 - SQLAlchemy ORM models for all tables with proper relationships
 - pgvector extension v0.8.1 support for vector embeddings (1024 dimensions)
@@ -457,6 +459,7 @@ uv run alembic current
 - GIN index for full-text search on tsvector column
 
 #### Backend API (FastAPI)
+
 - FastAPI application structure (`src/main.py`)
 - Authentication routes with JWT support:
   - `POST /auth/register` - User registration with email validation
@@ -474,6 +477,7 @@ uv run alembic current
 - CORS middleware configuration
 
 #### Security & Authentication
+
 - JWT-based authentication with python-jose
 - Password hashing with passlib and bcrypt
 - Email validation with email-validator
@@ -481,6 +485,7 @@ uv run alembic current
 - Token-based API access control
 
 #### Service Layer
+
 - `chat_service.py` - Chat logic with echo responses (placeholder for LLM)
   - Conversation management
   - Message persistence
@@ -488,6 +493,7 @@ uv run alembic current
 - `auth_service.py` - Simple user validation
 
 #### Frontend (Gradio)
+
 - Gradio web interface (`src/app.py`)
 - Login page with username input
 - Chat interface with:
@@ -499,6 +505,7 @@ uv run alembic current
 - Real-time API communication with FastAPI backend
 
 #### Development Tools & Configuration
+
 - `pyproject.toml` with uv package management and hatchling build backend
 - Hatch build configuration for proper package structure
 - ruff configuration for linting and formatting
@@ -515,6 +522,7 @@ uv run alembic current
 - psql command-line tools configured in PATH
 
 #### Documentation
+
 - `docs/database_schema.md` - Detailed database schema documentation
 - `docs/database_erd.md` - Entity-relationship diagram and examples
 - `docs/setup_database.md` - Database setup guide
@@ -526,18 +534,21 @@ uv run alembic current
 - Updated `architecture.md` with fixed Markdown list formatting
 
 ### Changed
+
 - Migrated from requirements.txt to pyproject.toml for dependency management
 - Updated project structure to support FastAPI + Gradio architecture
 - Renamed `metadata` columns to `extra_metadata` to avoid SQLAlchemy reserved keyword conflict
 - Updated Alembic env.py to use `text()` wrapper for raw SQL execution (SQLAlchemy 2.0 compatibility)
 
 ### Fixed
+
 - Fixed pyproject.toml missing hatch build configuration causing `uv sync` to fail
 - Fixed Alembic migration missing pgvector import
 - Fixed database connection configuration to read from .env securely (no plaintext passwords in alembic.ini)
 - Added missing dependencies: email-validator for Pydantic email validation
 
 ### Technical Details
+
 - Backend runs on port 8000 (FastAPI)
 - Frontend runs on port 7860 (Gradio)
 - Local PostgreSQL 18 database on port 5432
@@ -550,6 +561,7 @@ uv run alembic current
 - File uploads accepted but not processed (document processing pending)
 
 ### Database Setup Completed
+
 - ✅ PostgreSQL 18 installed via Homebrew
 - ✅ pgvector 0.8.1 extension installed
 - ✅ Local database `hr_chatbot` created

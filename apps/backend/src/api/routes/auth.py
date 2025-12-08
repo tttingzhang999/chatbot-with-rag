@@ -81,7 +81,7 @@ def register(request: RegisterRequest, db: DBSession) -> TokenResponse:
 
     return TokenResponse(
         access_token=access_token,
-        token_type="bearer",
+        token_type="bearer",  # nosec B106 - "bearer" is OAuth2 standard token type
         user_id=str(user.id),
         username=user.username,
         email=user.email,
@@ -118,7 +118,7 @@ def login(request: LoginRequest, db: DBSession) -> TokenResponse:
 
     return TokenResponse(
         access_token=access_token,
-        token_type="bearer",
+        token_type="bearer",  # nosec B106 - "bearer" is OAuth2 standard token type
         user_id=str(user.id),
         username=user.username,
         email=user.email,

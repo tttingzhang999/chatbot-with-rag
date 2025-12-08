@@ -108,4 +108,6 @@ class Message(Base):
     )
 
     def __repr__(self):
-        return f"<Message(id={self.id}, role='{self.role}', conversation_id={self.conversation_id})>"
+        return (
+            f"<Message(id={self.id}, role='{self.role}', conversation_id={self.conversation_id})>"
+        )

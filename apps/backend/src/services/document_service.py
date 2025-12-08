@@ -8,7 +8,6 @@ and BM25 index creation for hybrid search.
 import logging
 import os
 import re
-from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -139,25 +138,27 @@ class DocumentProcessor:
 
             # Download to temp file
             s3_client = boto3.client("s3", region_name=settings.AWS_REGION)
-            temp_file = tempfile.mktemp(suffix=f".{file_type}", dir="/tmp")
+            # Use NamedTemporaryFile for secure temp file creation
+            with tempfile.NamedTemporaryFile(suffix=f".{file_type}", delete=False) as temp_file:
+                temp_file_path = temp_file.name
 
             try:
-                logger.info(f"Downloading {file_path} to {temp_file} for text extraction")
-                s3_client.download_file(bucket_name, s3_key, temp_file)
+                logger.info(f"Downloading {file_path} to {temp_file_path} for text extraction")
+                s3_client.download_file(bucket_name, s3_key, temp_file_path)
 
                 # Extract text from temp file
                 file_type_lower = file_type.lower()
-                text = self._extract_text_from_local_file(temp_file, file_type_lower)
+                text = self._extract_text_from_local_file(temp_file_path, file_type_lower)
 
                 return text
             finally:
                 # Clean up temp file
-                if os.path.exists(temp_file):
+                if os.path.exists(temp_file_path):
                     try:
-                        os.unlink(temp_file)
-                        logger.debug(f"Cleaned up temp file: {temp_file}")
+                        os.unlink(temp_file_path)
+                        logger.debug(f"Cleaned up temp file: {temp_file_path}")
                     except Exception as e:
-                        logger.warning(f"Failed to delete temp file {temp_file}: {e}")
+                        logger.warning(f"Failed to delete temp file {temp_file_path}: {e}")
 
         # Local file path
         if not os.path.exists(file_path):
@@ -321,9 +322,7 @@ class DocumentProcessor:
             overlap=overlap,
         )
 
-        logger.info(
-            f"Created {len(chunks)} chunks from {len(semantic_units)} semantic units"
-        )
+        logger.info(f"Created {len(chunks)} chunks from {len(semantic_units)} semantic units")
         return chunks
 
     def _is_structured_document(self, text: str) -> bool:
@@ -440,12 +439,12 @@ class DocumentProcessor:
                 # Add unit to current chunk
                 current_chunk += "\n\n" + unit if current_chunk else unit
 
-                # If current chunk meets min_size, consider saving it
-                if len(current_chunk) >= min_size:
-                    # Save if it's close to max_size or last unit
-                    if len(current_chunk) >= max_size * 0.7 or unit == units[-1]:
-                        chunks.append(current_chunk.strip())
-                        current_chunk = ""
+                # If current chunk meets min_size and is close to max_size or last unit, consider saving it
+                if len(current_chunk) >= min_size and (
+                    len(current_chunk) >= max_size * 0.7 or unit == units[-1]
+                ):
+                    chunks.append(current_chunk.strip())
+                    current_chunk = ""
 
             # Case 2: Unit exceeds max_size, need to split further
             else:
@@ -464,9 +463,7 @@ class DocumentProcessor:
 
         return [c for c in chunks if c]
 
-    def _split_by_sentences(
-        self, text: str, max_size: int, overlap: int
-    ) -> list[str]:
+    def _split_by_sentences(self, text: str, max_size: int, overlap: int) -> list[str]:
         """
         Split text by sentences when it exceeds max_size.
 
@@ -602,7 +599,7 @@ class DocumentProcessor:
         try:
             # Create DocumentChunk objects
             chunk_objects = []
-            for idx, (chunk_text, embedding, bm25_text) in enumerate(
+            for idx, (chunk_text, embedding, _bm25_text) in enumerate(
                 zip(chunks, embeddings, bm25_vectors, strict=True)
             ):
                 chunk_obj = DocumentChunk(
@@ -650,11 +647,7 @@ class DocumentProcessor:
             if error_message is not None:
                 update_values["error_message"] = error_message
 
-            stmt = (
-                update(Document)
-                .where(Document.id == document_id)
-                .values(**update_values)
-            )
+            stmt = update(Document).where(Document.id == document_id).values(**update_values)
             self.db.execute(stmt)
             self.db.commit()
 

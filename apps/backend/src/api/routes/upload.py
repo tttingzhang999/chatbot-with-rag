@@ -9,7 +9,6 @@ This module provides endpoints for:
 
 import logging
 import uuid
-from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from pydantic import BaseModel, Field
@@ -33,7 +32,9 @@ class PresignedUrlRequest(BaseModel):
 
     filename: str = Field(..., description="Original filename")
     file_type: str = Field(..., description="File extension (pdf, docx, txt, doc)")
-    file_size: int = Field(..., ge=1, le=50 * 1024 * 1024, description="File size in bytes (max 50MB)")
+    file_size: int = Field(
+        ..., ge=1, le=50 * 1024 * 1024, description="File size in bytes (max 50MB)"
+    )
 
 
 class PresignedUrlResponse(BaseModel):
@@ -134,25 +135,36 @@ def process_uploaded_document(
         bucket_name = s3_path_parts[0]
         s3_key = s3_path_parts[1]
 
-        # Download file from S3 to /tmp
+        # Download file from S3 to temp location
         s3_client = boto3.client("s3", region_name=settings.AWS_REGION)
-        temp_file = tempfile.mktemp(suffix=f".{file_type}", dir="/tmp")
-
-        logger.info(f"Downloading {s3_path} to {temp_file}")
-        s3_client.download_file(bucket_name, s3_key, temp_file)
-
-        # Create new database session for background task
-        engine = create_engine(db_url)
-        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-        db = SessionLocal()
+        # Use NamedTemporaryFile for secure temp file creation
+        with tempfile.NamedTemporaryFile(suffix=f".{file_type}", delete=False) as temp_file:
+            temp_file_path = temp_file.name
 
         try:
-            # Process document
-            processor = DocumentProcessor(db)
-            result = processor.process_document_sync(document_id, temp_file, file_type)
-            logger.info(f"Document processed successfully: {result}")
+            logger.info(f"Downloading {s3_path} to {temp_file_path}")
+            s3_client.download_file(bucket_name, s3_key, temp_file_path)
+
+            # Create new database session for background task
+            engine = create_engine(db_url)
+            SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+            db = SessionLocal()
+
+            try:
+                # Process document
+                processor = DocumentProcessor(db)
+                result = processor.process_document_sync(document_id, temp_file_path, file_type)
+                logger.info(f"Document processed successfully: {result}")
+            finally:
+                db.close()
         finally:
-            db.close()
+            # Clean up temp file
+            if os.path.exists(temp_file_path):
+                try:
+                    os.unlink(temp_file_path)
+                    logger.debug(f"Cleaned up temp file: {temp_file_path}")
+                except Exception as e:
+                    logger.warning(f"Failed to delete temp file {temp_file_path}: {e}")
 
     except Exception as e:
         logger.error(f"Background processing failed for document {document_id}: {e}", exc_info=True)
@@ -305,10 +317,14 @@ def trigger_document_processing(
             )
 
         # Get document from database
-        document = db.query(Document).filter(
-            Document.id == doc_uuid,
-            Document.user_id == current_user.id,
-        ).first()
+        document = (
+            db.query(Document)
+            .filter(
+                Document.id == doc_uuid,
+                Document.user_id == current_user.id,
+            )
+            .first()
+        )
 
         if not document:
             raise HTTPException(

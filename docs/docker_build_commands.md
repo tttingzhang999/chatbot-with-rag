@@ -149,6 +149,7 @@ docker run --rm --platform linux/amd64 \
 ### Q: 為什麼需要 `--platform linux/amd64`?
 
 A: AWS Lambda 只支援 x86_64 架構。Apple Silicon 是 ARM64 架構,如果不指定平台,構建的鏡像無法在 Lambda 上運行,會出現錯誤:
+
 ```
 exec format error
 ```
@@ -167,6 +168,7 @@ docker inspect hr-chatbot-file-processor:latest | grep Architecture
 ### Q: 如果忘記加 `--platform` 怎麼辦?
 
 重新構建即可:
+
 ```bash
 # 刪除錯誤的鏡像
 docker rmi hr-chatbot-file-processor:latest

@@ -36,33 +36,35 @@ Route Table: rtb-0a2c110b3e52d0983
 
 ```json
 {
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "s3:GetObject",
-                "s3:PutObject",
-                "s3:DeleteObject",
-                "s3:ListBucket"
-            ],
-            "Resource": [
-                "arn:aws:s3:::hr-chatbot-documents-ap-northeast-1",
-                "arn:aws:s3:::hr-chatbot-documents-ap-northeast-1/*"
-            ]
-        }
-    ]
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::hr-chatbot-documents-ap-northeast-1",
+        "arn:aws:s3:::hr-chatbot-documents-ap-northeast-1/*"
+      ]
+    }
+  ]
 }
 ```
 
 ### ✅ 階段 1.4: 創建 File Processor Lambda 代碼
 
 **新文件**:
+
 - `src/lambda_handlers/__init__.py`
 - `src/lambda_handlers/file_processor.py`
 - `Dockerfile.file-processor`
 
 **功能**:
+
 - 接收 S3 PutObject 事件
 - 下載文件到 `/tmp`
 - 調用現有的 `DocumentProcessor` 進行處理
@@ -73,11 +75,13 @@ Route Table: rtb-0a2c110b3e52d0983
 **修改文件**: `src/api/routes/upload.py`
 
 **新增功能**:
+
 - 環境變數控制: `USE_S3=true` 時上傳到 S3
 - S3 模式: 上傳到 `s3://hr-chatbot-documents-ap-northeast-1/uploads/`
 - 本地模式: 保持原有邏輯用於開發
 
 **環境變數**:
+
 ```bash
 USE_S3=true                                           # 啟用 S3 上傳
 S3_BUCKET=hr-chatbot-documents-ap-northeast-1         # S3 Bucket 名稱
@@ -116,6 +120,7 @@ docker run --rm --platform linux/amd64 \
 ```
 
 **重要**:
+
 - `--platform linux/amd64` 是必須的,因為 AWS Lambda 只支援 x86_64 架構
 - Apple Silicon (M1/M2/M3) 是 ARM64 架構,需要交叉編譯
 - Docker Desktop 會自動處理交叉編譯 (使用 QEMU)
@@ -213,6 +218,7 @@ aws-vault exec gc-playground-ting-chatbot -- aws lambda update-function-configur
 #### 1.8.2 測試文件上傳
 
 1. 通過 API Gateway 上傳測試文件:
+
    ```bash
    curl -X POST https://8lvsiaz5nl.execute-api.ap-northeast-1.amazonaws.com/upload/document \
        -H "Authorization: Bearer $TOKEN" \
@@ -220,12 +226,14 @@ aws-vault exec gc-playground-ting-chatbot -- aws lambda update-function-configur
    ```
 
 2. 檢查 S3 Bucket:
+
    ```bash
    aws-vault exec gc-playground-ting-chatbot -- \
        aws s3 ls s3://hr-chatbot-documents-ap-northeast-1/uploads/
    ```
 
 3. 檢查 File Processor Lambda Logs:
+
    ```bash
    aws-vault exec gc-playground-ting-chatbot -- \
        aws logs tail /aws/lambda/hr-chatbot-file-processor --follow
@@ -252,6 +260,7 @@ User → API Gateway → Backend Lambda
 ```
 
 **問題**:
+
 - ❌ 用戶等待時間長
 - ❌ 大文件可能超時
 - ❌ 文件在 /tmp，Lambda 回收後消失
@@ -276,6 +285,7 @@ S3 PutObject Event
 ```
 
 **優點**:
+
 - ✅ 用戶快速得到回應
 - ✅ 支援大文件處理
 - ✅ 文件持久保存在 S3
@@ -287,13 +297,13 @@ S3 PutObject Event
 
 ### 新增成本
 
-| 項目 | 月成本 | 說明 |
-|------|--------|------|
-| S3 存儲 | ~$1 | 假設 10GB 文件 |
-| S3 請求 | ~$0.1 | 少量 PUT/GET 請求 |
-| File Processor Lambda | ~$3 | 額外的處理時間 |
-| S3 Gateway Endpoint | $0 | **免費!** |
-| **總計** | **~$4/月** | 微小增加 |
+| 項目                  | 月成本     | 說明              |
+| --------------------- | ---------- | ----------------- |
+| S3 存儲               | ~$1        | 假設 10GB 文件    |
+| S3 請求               | ~$0.1      | 少量 PUT/GET 請求 |
+| File Processor Lambda | ~$3        | 額外的處理時間    |
+| S3 Gateway Endpoint   | $0         | **免費!**         |
+| **總計**              | **~$4/月** | 微小增加          |
 
 **原有成本**: ~$75/月
 **新成本**: ~$79/月
@@ -306,6 +316,7 @@ S3 PutObject Event
 如果新架構出現問題，可以快速回滾:
 
 1. 更新 Backend Lambda 環境變數:
+
    ```bash
    USE_S3=false
    ```

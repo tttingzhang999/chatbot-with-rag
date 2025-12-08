@@ -22,82 +22,89 @@ The HR Chatbot RAG system uses PostgreSQL with pgvector extension to store docum
 
 Stores metadata about uploaded documents.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | UUID | Primary key |
-| file_name | VARCHAR(255) | Original filename |
-| file_path | VARCHAR(512) | S3 path to the document |
-| file_type | VARCHAR(50) | File type (pdf, docx, txt, etc.) |
-| file_size | INTEGER | File size in bytes |
-| upload_date | TIMESTAMP | When the document was uploaded |
-| metadata | JSONB | Additional flexible metadata |
+| Column      | Type         | Description                      |
+| ----------- | ------------ | -------------------------------- |
+| id          | UUID         | Primary key                      |
+| file_name   | VARCHAR(255) | Original filename                |
+| file_path   | VARCHAR(512) | S3 path to the document          |
+| file_type   | VARCHAR(50)  | File type (pdf, docx, txt, etc.) |
+| file_size   | INTEGER      | File size in bytes               |
+| upload_date | TIMESTAMP    | When the document was uploaded   |
+| metadata    | JSONB        | Additional flexible metadata     |
 
 **Relationships**:
+
 - One-to-many with `document_chunks`
 
 ### 2. document_chunks
 
 Stores processed document chunks with embeddings and full-text search data.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | UUID | Primary key |
-| document_id | UUID | Foreign key to documents table |
-| chunk_index | INTEGER | Order of chunk within the document |
-| content | TEXT | Actual text content of the chunk |
-| embedding | VECTOR(1024) | Vector embedding (Cohere Embed v4) |
-| content_tsvector | TSVECTOR | Full-text search vector for BM25 |
-| chunk_metadata | JSONB | Chunk-specific metadata (position, page, etc.) |
-| created_at | TIMESTAMP | When the chunk was created |
+| Column           | Type         | Description                                    |
+| ---------------- | ------------ | ---------------------------------------------- |
+| id               | UUID         | Primary key                                    |
+| document_id      | UUID         | Foreign key to documents table                 |
+| chunk_index      | INTEGER      | Order of chunk within the document             |
+| content          | TEXT         | Actual text content of the chunk               |
+| embedding        | VECTOR(1024) | Vector embedding (Cohere Embed v4)             |
+| content_tsvector | TSVECTOR     | Full-text search vector for BM25               |
+| chunk_metadata   | JSONB        | Chunk-specific metadata (position, page, etc.) |
+| created_at       | TIMESTAMP    | When the chunk was created                     |
 
 **Indexes**:
+
 - `idx_embedding_vector`: IVFFlat index for vector similarity search (cosine distance)
 - `idx_content_tsvector`: GIN index for full-text search
 - `idx_document_chunk`: Composite index on (document_id, chunk_index)
 
 **Relationships**:
+
 - Many-to-one with `documents`
 
 ### 3. conversations
 
 Stores conversation sessions for multi-turn chat.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | UUID | Primary key |
-| user_id | VARCHAR(255) | Optional user identifier |
-| title | VARCHAR(255) | Optional conversation title |
-| created_at | TIMESTAMP | When the conversation started |
-| updated_at | TIMESTAMP | Last update time |
-| metadata | JSONB | Additional flexible metadata |
+| Column     | Type         | Description                   |
+| ---------- | ------------ | ----------------------------- |
+| id         | UUID         | Primary key                   |
+| user_id    | VARCHAR(255) | Optional user identifier      |
+| title      | VARCHAR(255) | Optional conversation title   |
+| created_at | TIMESTAMP    | When the conversation started |
+| updated_at | TIMESTAMP    | Last update time              |
+| metadata   | JSONB        | Additional flexible metadata  |
 
 **Indexes**:
+
 - `idx_conversation_user_id`: Index on user_id
 - `idx_conversation_created_at`: Index on created_at
 
 **Relationships**:
+
 - One-to-many with `messages`
 
 ### 4. messages
 
 Stores individual messages within conversations.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | UUID | Primary key |
-| conversation_id | UUID | Foreign key to conversations table |
-| role | VARCHAR(20) | Message role (user, assistant, system) |
-| content | TEXT | Message content |
-| retrieved_chunks | JSONB | List of chunk IDs used for this response |
-| retrieval_metadata | JSONB | Retrieval scores and metadata |
-| created_at | TIMESTAMP | Message timestamp |
+| Column             | Type        | Description                              |
+| ------------------ | ----------- | ---------------------------------------- |
+| id                 | UUID        | Primary key                              |
+| conversation_id    | UUID        | Foreign key to conversations table       |
+| role               | VARCHAR(20) | Message role (user, assistant, system)   |
+| content            | TEXT        | Message content                          |
+| retrieved_chunks   | JSONB       | List of chunk IDs used for this response |
+| retrieval_metadata | JSONB       | Retrieval scores and metadata            |
+| created_at         | TIMESTAMP   | Message timestamp                        |
 
 **Indexes**:
+
 - `idx_message_conversation_id`: Index on conversation_id
 - `idx_message_created_at`: Index on created_at
 - `idx_message_role`: Index on role
 
 **Relationships**:
+
 - Many-to-one with `conversations`
 
 ## Hybrid Search Implementation
@@ -153,6 +160,7 @@ python -m src.db.init_db
 ```
 
 This will:
+
 1. Create the `vector` and `pg_trgm` extensions
 2. Create all tables as defined in the models
 

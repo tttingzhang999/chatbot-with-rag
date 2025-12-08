@@ -192,8 +192,7 @@ def generate_response(
 
                         for idx, result in enumerate(search_results, 1):
                             context_parts.append(
-                                f"[Document {idx}: {result['file_name']}]\n"
-                                f"{result['content']}\n"
+                                f"[Document {idx}: {result['file_name']}]\n{result['content']}\n"
                             )
 
                             retrieved_chunks.append(
@@ -220,9 +219,7 @@ def generate_response(
                     # Continue without RAG context rather than failing completely
 
         # Get system prompt with or without RAG context
-        system_prompt = get_system_prompt(
-            use_rag=settings.ENABLE_RAG, context=retrieval_context
-        )
+        system_prompt = get_system_prompt(use_rag=settings.ENABLE_RAG, context=retrieval_context)
 
         # Get Bedrock client and invoke LLM with conversation model
         bedrock_client = get_bedrock_client()

@@ -174,7 +174,7 @@ def get_conversations(
 def get_conversation_history(
     conversation_id: str,
     db: DBSession,
-    current_user: CurrentUser,
+    _current_user: CurrentUser,
 ) -> ConversationHistoryResponse:
     """
     Get conversation history.
