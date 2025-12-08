@@ -68,66 +68,57 @@ export function DocumentItem({ document, onDelete, isDeleting = false }: Documen
 
   return (
     <Card className="hover:bg-accent/50 transition-colors">
-      <CardContent className="p-4">
-        <div className="flex items-start gap-3">
+      <CardContent className="p-3">
+        <div className="flex items-center gap-3">
           {/* File icon */}
-          <div className="p-2 rounded-lg bg-primary/10">
-            <FileText className="h-5 w-5 text-primary" />
+          <div className="p-1.5 rounded-lg bg-primary/10 shrink-0">
+            <FileText className="h-4 w-4 text-primary" />
           </div>
 
-          {/* File info */}
+          {/* File name */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{document.file_name}</p>
-                <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
-                  <span>{formatFileSize(document.file_size)}</span>
-                  <span>•</span>
-                  <span>{formatDate(document.upload_date)}</span>
-                </div>
-              </div>
-
-              {/* Status badge */}
-              <Badge
-                variant={status.variant}
-                className={cn('flex items-center gap-1.5 shrink-0')}
-              >
-                <StatusIcon className={cn('h-3 w-3', status.className)} />
-                <span>{status.label}</span>
-              </Badge>
-            </div>
-
-            {/* Error message */}
-            {document.status === 'failed' && document.error_message && (
-              <p className="mt-2 text-xs text-destructive">
-                {document.error_message}
-              </p>
-            )}
-
-            {/* Actions */}
-            <div className="flex items-center gap-2 mt-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onDelete?.(document.id)}
-                disabled={isDeleting}
-                className="h-8 text-xs"
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="h-3 w-3 mr-1" />
-                    Delete
-                  </>
-                )}
-              </Button>
-            </div>
+            <p className="font-medium truncate text-sm">{document.file_name}</p>
           </div>
+
+          {/* Metadata */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
+            <span>{formatFileSize(document.file_size)}</span>
+            <span>•</span>
+            <span>{formatDate(document.upload_date)}</span>
+          </div>
+
+          {/* Status badge */}
+          <Badge
+            variant={status.variant}
+            className={cn('flex items-center gap-1 shrink-0 h-6')}
+          >
+            <StatusIcon className={cn('h-3 w-3', status.className)} />
+            <span className="text-xs">{status.label}</span>
+          </Badge>
+
+          {/* Delete button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDelete?.(document.id)}
+            disabled={isDeleting}
+            className="h-7 w-7 p-0 shrink-0"
+            title="Delete document"
+          >
+            {isDeleting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="h-3.5 w-3.5" />
+            )}
+          </Button>
         </div>
+
+        {/* Error message (only shows on failed status) */}
+        {document.status === 'failed' && document.error_message && (
+          <p className="mt-2 text-xs text-destructive pl-9">
+            {document.error_message}
+          </p>
+        )}
       </CardContent>
     </Card>
   );

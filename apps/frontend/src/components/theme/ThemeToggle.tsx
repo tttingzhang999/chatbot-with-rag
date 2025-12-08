@@ -13,14 +13,8 @@ export function ThemeToggle() {
   const { setTheme, theme } = useTheme();
 
   useEffect(() => {
-    // Add transition class to document element
-    const root = document.documentElement;
-    root.classList.add('theme-transition');
-
-    // Cleanup function to remove transition class
-    return () => {
-      root.classList.remove('theme-transition');
-    };
+    // Add transition class to document element for smooth theme transitions
+    document.documentElement.classList.add('theme-transition');
   }, []);
 
   return (
