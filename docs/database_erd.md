@@ -85,6 +85,7 @@ erDiagram
 ### Conversation Context Tracking
 
 **messages** table stores:
+
 - `retrieved_chunks`: Which document chunks were used for the response
 - `retrieval_metadata`: Scores and metadata from the retrieval process
 - Enables analysis of retrieval quality and debugging
@@ -247,6 +248,7 @@ FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
 ## Storage Estimates
 
 Assuming:
+
 - Average chunk size: 1000 characters (1 KB)
 - Vector size: 1024 dimensions × 4 bytes = 4 KB
 - Metadata: ~1 KB
@@ -254,6 +256,7 @@ Assuming:
 **Per chunk**: ~6 KB
 
 **1000 documents × 100 chunks each**:
+
 - Total chunks: 100,000
 - Storage: ~600 MB (plus indexes)
 

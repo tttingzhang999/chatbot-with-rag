@@ -333,6 +333,7 @@ aws rds create-db-cluster \
 ```
 
 **關鍵輸出**:
+
 - Cluster Endpoint: `hr-chatbot-cluster.cluster-c98qk102ncqc.ap-northeast-1.rds.amazonaws.com`
 - Status: creating → available
 
@@ -347,6 +348,7 @@ aws rds create-db-instance \
 ```
 
 **關鍵輸出**:
+
 - Instance Endpoint: `hr-chatbot-instance.c98qk102ncqc.ap-northeast-1.rds.amazonaws.com`
 
 #### 3.5 設定 Publicly Accessible (本地開發)
@@ -430,6 +432,7 @@ aws lambda update-function-configuration \
 ⚠️ **錯誤**: Lambda role 缺少 VPC 權限
 
 **解決方案**: 在 IAM Console 為 `hr-chatbot-lambda-role` 附加:
+
 - `AWSLambdaVPCAccessExecutionRole`
 
 #### 6.2 更新 Lambda 環境變數
@@ -485,6 +488,7 @@ aws ec2 create-vpc-endpoint \
 ### 問題 1: Subnet CIDR 衝突
 
 **錯誤訊息**:
+
 ```
 InvalidSubnet.Conflict: The CIDR '10.0.0.128/25' conflicts with another subnet
 ```
@@ -492,6 +496,7 @@ InvalidSubnet.Conflict: The CIDR '10.0.0.128/25' conflicts with another subnet
 **原因**: VPC CIDR 10.0.0.0/24 原本只有 1 個 subnet 佔用了全部空間。
 
 **解決方案**:
+
 1. 刪除舊 subnet
 2. 重新創建兩個 /25 subnets:
    - 10.0.0.0/25 (IPs: 10.0.0.0-127)
@@ -502,6 +507,7 @@ InvalidSubnet.Conflict: The CIDR '10.0.0.128/25' conflicts with another subnet
 ### 問題 2: Aurora 無法設為 Publicly Accessible
 
 **錯誤訊息**:
+
 ```
 InvalidVPCNetworkStateFault: Cannot create a publicly accessible DBInstance.
 The specified VPC has no internet gateway attached.
@@ -510,6 +516,7 @@ The specified VPC has no internet gateway attached.
 **原因**: VPC 缺少 Internet Gateway。
 
 **解決方案**:
+
 ```bash
 # 創建並附加 IGW
 aws ec2 create-internet-gateway
@@ -525,6 +532,7 @@ aws ec2 create-route --route-table-id rtb-xxx \
 ### 問題 3: Aurora 設為 Public 時 DNS 錯誤
 
 **錯誤訊息**:
+
 ```
 InvalidVPCNetworkStateFault: The specified VPC does not support DNS resolution,
 DNS hostnames, or both.
@@ -533,6 +541,7 @@ DNS hostnames, or both.
 **原因**: VPC 未啟用 DNS support 和 DNS hostnames。
 
 **解決方案**:
+
 ```bash
 aws ec2 modify-vpc-attribute --vpc-id vpc-xxx --enable-dns-support
 aws ec2 modify-vpc-attribute --vpc-id vpc-xxx --enable-dns-hostnames
@@ -543,6 +552,7 @@ aws ec2 modify-vpc-attribute --vpc-id vpc-xxx --enable-dns-hostnames
 ### 問題 4: Lambda Init Timeout
 
 **錯誤訊息**:
+
 ```
 INIT_REPORT Init Duration: 10000.09 ms Phase: init Status: timeout
 ```
@@ -560,6 +570,7 @@ INIT_REPORT Init Duration: 10000.09 ms Phase: init Status: timeout
 **原因**: Security Group 沒有允許 HTTPS (443) 流量到 VPC Endpoints。
 
 **解決方案**:
+
 ```bash
 aws ec2 authorize-security-group-ingress \
     --group-id sg-0dfc84b0acf5f5565 \
@@ -573,6 +584,7 @@ aws ec2 authorize-security-group-ingress \
 ### 問題 6: Lambda 無權訪問 Secrets Manager
 
 **錯誤訊息**:
+
 ```
 AccessDeniedException: User: arn:aws:sts::xxx:assumed-role/hr-chatbot-lambda-role/hr-chatbot-backend
 is not authorized to perform: secretsmanager:GetSecretValue
@@ -581,6 +593,7 @@ is not authorized to perform: secretsmanager:GetSecretValue
 **原因**: Lambda IAM Role 缺少 Secrets Manager 權限。
 
 **解決方案**: 在 IAM Console 為 `hr-chatbot-lambda-role` 附加:
+
 - `SecretsManagerReadWrite` 或自定義最小權限 policy
 
 ---
@@ -588,6 +601,7 @@ is not authorized to perform: secretsmanager:GetSecretValue
 ### 問題 7: Lambda 無法解析 DATABASE_URL
 
 **錯誤訊息**:
+
 ```
 ArgumentError: Could not parse SQLAlchemy URL from given URL string
 ```
@@ -602,53 +616,54 @@ ArgumentError: Could not parse SQLAlchemy URL from given URL string
 
 ### VPC 配置
 
-| 資源 | ID | 值 |
-|------|----|----|
-| VPC | vpc-096e9a11b215affa3 | hr-chatbot |
-| CIDR | - | 10.0.0.0/24 |
-| Subnet 1 (1a) | subnet-0815a8642250d1459 | 10.0.0.0/25 |
-| Subnet 2 (1c) | subnet-0b7dc9e7411b5bec4 | 10.0.0.128/25 |
-| Internet Gateway | igw-06a60cfc67b031251 | - |
-| Route Table | rtb-0a2c110b3e52d0983 | 0.0.0.0/0 → IGW |
-| Security Group | sg-0dfc84b0acf5f5565 | hr-chatbot-aurora-sg |
+| 資源             | ID                       | 值                   |
+| ---------------- | ------------------------ | -------------------- |
+| VPC              | vpc-096e9a11b215affa3    | hr-chatbot           |
+| CIDR             | -                        | 10.0.0.0/24          |
+| Subnet 1 (1a)    | subnet-0815a8642250d1459 | 10.0.0.0/25          |
+| Subnet 2 (1c)    | subnet-0b7dc9e7411b5bec4 | 10.0.0.128/25        |
+| Internet Gateway | igw-06a60cfc67b031251    | -                    |
+| Route Table      | rtb-0a2c110b3e52d0983    | 0.0.0.0/0 → IGW      |
+| Security Group   | sg-0dfc84b0acf5f5565     | hr-chatbot-aurora-sg |
 
 ### Aurora 配置
 
-| 屬性 | 值 |
-|------|-----|
-| Cluster ID | hr-chatbot-cluster |
-| Instance ID | hr-chatbot-instance |
-| Engine | aurora-postgresql |
-| Version | 17.6 |
-| Instance Class | db.serverless |
-| Scaling | 0.5 - 2.0 ACU |
-| Database | hr_chatbot |
-| Username | postgres |
-| Password | H0Afk0Psa8HR71VguHEt8QudB4l1WoWZ |
-| Cluster Endpoint | hr-chatbot-cluster.cluster-c98qk102ncqc.ap-northeast-1.rds.amazonaws.com |
-| Instance Endpoint | hr-chatbot-instance.c98qk102ncqc.ap-northeast-1.rds.amazonaws.com |
-| Extensions | pgvector ✅ |
+| 屬性              | 值                                                                       |
+| ----------------- | ------------------------------------------------------------------------ |
+| Cluster ID        | hr-chatbot-cluster                                                       |
+| Instance ID       | hr-chatbot-instance                                                      |
+| Engine            | aurora-postgresql                                                        |
+| Version           | 17.6                                                                     |
+| Instance Class    | db.serverless                                                            |
+| Scaling           | 0.5 - 2.0 ACU                                                            |
+| Database          | hr_chatbot                                                               |
+| Username          | postgres                                                                 |
+| Password          | H0Afk0Psa8HR71VguHEt8QudB4l1WoWZ                                         |
+| Cluster Endpoint  | hr-chatbot-cluster.cluster-c98qk102ncqc.ap-northeast-1.rds.amazonaws.com |
+| Instance Endpoint | hr-chatbot-instance.c98qk102ncqc.ap-northeast-1.rds.amazonaws.com        |
+| Extensions        | pgvector ✅                                                              |
 
 ### Secrets Manager
 
-| Secret Name | 內容 |
-|-------------|------|
-| hr-chatbot/database | `{host, port, database, username, password}` |
-| hr-chatbot/app-secrets | `{secret_key, algorithm}` |
+| Secret Name            | 內容                                         |
+| ---------------------- | -------------------------------------------- |
+| hr-chatbot/database    | `{host, port, database, username, password}` |
+| hr-chatbot/app-secrets | `{secret_key, algorithm}`                    |
 
 ### Lambda 配置
 
-| 屬性 | 值 |
-|------|-----|
-| Function Name | hr-chatbot-backend |
-| VPC | vpc-096e9a11b215affa3 |
-| Subnets | subnet-0815a8642250d1459, subnet-0b7dc9e7411b5bec4 |
-| Security Group | sg-0dfc84b0acf5f5565 |
-| Timeout | 60 seconds |
-| Memory | 1024 MB |
-| Role | hr-chatbot-lambda-role |
+| 屬性           | 值                                                 |
+| -------------- | -------------------------------------------------- |
+| Function Name  | hr-chatbot-backend                                 |
+| VPC            | vpc-096e9a11b215affa3                              |
+| Subnets        | subnet-0815a8642250d1459, subnet-0b7dc9e7411b5bec4 |
+| Security Group | sg-0dfc84b0acf5f5565                               |
+| Timeout        | 60 seconds                                         |
+| Memory         | 1024 MB                                            |
+| Role           | hr-chatbot-lambda-role                             |
 
 **環境變數**:
+
 ```
 DB_SECRET_NAME=hr-chatbot/database
 APP_SECRET_NAME=hr-chatbot/app-secrets
@@ -658,6 +673,7 @@ EMBEDDING_MODEL_ID=cohere.embed-v4:0
 ```
 
 **IAM Policies**:
+
 - AWSLambdaBasicExecutionRole
 - AWSLambdaVPCAccessExecutionRole
 - SecretsManagerReadWrite
@@ -665,10 +681,10 @@ EMBEDDING_MODEL_ID=cohere.embed-v4:0
 
 ### VPC Endpoints
 
-| Service | Endpoint ID | Private DNS |
-|---------|-------------|-------------|
-| Secrets Manager | vpce-001995f00ca7ee95d | Enabled |
-| Bedrock Runtime | vpce-0c688ebbd609b4236 | Enabled |
+| Service         | Endpoint ID            | Private DNS |
+| --------------- | ---------------------- | ----------- |
+| Secrets Manager | vpce-001995f00ca7ee95d | Enabled     |
+| Bedrock Runtime | vpce-0c688ebbd609b4236 | Enabled     |
 
 ---
 
@@ -681,8 +697,9 @@ curl https://8lvsiaz5nl.execute-api.ap-northeast-1.amazonaws.com/health
 ```
 
 **期望輸出**:
+
 ```json
-{"status": "healthy"}
+{ "status": "healthy" }
 ```
 
 ### 2. 測試本地連接 Aurora
@@ -704,6 +721,7 @@ psql -h hr-chatbot-instance.c98qk102ncqc.ap-northeast-1.rds.amazonaws.com \
 ### 4. 測試 Lambda → Aurora 連接
 
 查看 Lambda logs:
+
 ```bash
 aws logs tail /aws/lambda/hr-chatbot-backend --follow
 ```
@@ -770,6 +788,7 @@ aws logs tail /aws/lambda/hr-chatbot-backend --follow
 ### Monitoring
 
 建議啟用:
+
 - CloudWatch Logs (Lambda, RDS)
 - CloudWatch Metrics (Lambda duration, RDS connections)
 - RDS Performance Insights

@@ -13,3 +13,13 @@ output "apprunner_dns_target" {
   description = "App Runner DNS target for CNAME record"
   value       = aws_apprunner_custom_domain_association.frontend.dns_target
 }
+
+output "api_gateway_url" {
+  description = "API Gateway custom domain URL"
+  value       = "https://${aws_apigatewayv2_domain_name.api.domain_name}"
+}
+
+output "api_gateway_endpoint" {
+  description = "API Gateway regional endpoint"
+  value       = aws_apigatewayv2_domain_name.api.domain_name_configuration[0].target_domain_name
+}

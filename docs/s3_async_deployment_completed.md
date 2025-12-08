@@ -12,13 +12,13 @@
 
 ### 核心改進
 
-| 指標 | 舊架構 | 新架構 | 改善 |
-|------|--------|--------|------|
-| API 回應時間 | 30-60秒 | 2-3秒 | **90% ↓** |
-| 文件持久化 | /tmp (臨時) | S3 (永久) | ✅ |
-| 大文件支持 | 可能超時 | 無限制 | ✅ |
-| 重試機制 | 無 | 自動重試 | ✅ |
-| 成本增加 | - | $4/月 | +5.3% |
+| 指標         | 舊架構      | 新架構    | 改善      |
+| ------------ | ----------- | --------- | --------- |
+| API 回應時間 | 30-60秒     | 2-3秒     | **90% ↓** |
+| 文件持久化   | /tmp (臨時) | S3 (永久) | ✅        |
+| 大文件支持   | 可能超時    | 無限制    | ✅        |
+| 重試機制     | 無          | 自動重試  | ✅        |
+| 成本增加     | -           | $4/月     | +5.3%     |
 
 ---
 
@@ -27,6 +27,7 @@
 ### 1. S3 Infrastructure
 
 #### 1.1 S3 Bucket
+
 ```
 Bucket: hr-chatbot-documents-ap-northeast-1
 Region: ap-northeast-1
@@ -37,6 +38,7 @@ Features:
 ```
 
 #### 1.2 S3 Gateway VPC Endpoint
+
 ```
 Endpoint ID: vpce-0cf009c1828a3e53c
 Type: Gateway (免費!)
@@ -47,6 +49,7 @@ Status: Available
 ### 2. Lambda Infrastructure
 
 #### 2.1 File Processor Lambda
+
 ```
 Function Name: hr-chatbot-file-processor
 Package Type: Image (Docker)
@@ -61,6 +64,7 @@ Security Group: sg-0dfc84b0acf5f5565
 ```
 
 **環境變數**:
+
 ```bash
 DB_SECRET_NAME=hr-chatbot/database
 APP_SECRET_NAME=hr-chatbot/app-secrets
@@ -69,6 +73,7 @@ EMBEDDING_MODEL_ID=cohere.embed-v4:0
 ```
 
 **IAM Role**: `hr-chatbot-lambda-role`
+
 - AWSLambdaBasicExecutionRole
 - AWSLambdaVPCAccessExecutionRole
 - SecretsManagerReadWrite
@@ -76,6 +81,7 @@ EMBEDDING_MODEL_ID=cohere.embed-v4:0
 - hr-chatbot-s3-access (inline policy)
 
 #### 2.2 S3 Event Trigger
+
 ```
 Event: s3:ObjectCreated:*
 Filter: uploads/* (prefix)
@@ -87,6 +93,7 @@ Configuration ID: YTEwYTczNDAtOGNhNy00OTFkLWI2YjAtYzM0YzAwODJhYTMw
 ### 3. Code Changes
 
 #### 3.1 New Files Created
+
 - `src/lambda_handlers/__init__.py`
 - `src/lambda_handlers/file_processor.py`
 - `Dockerfile.file-processor`
@@ -95,6 +102,7 @@ Configuration ID: YTEwYTczNDAtOGNhNy00OTFkLWI2YjAtYzM0YzAwODJhYTMw
 - `docs/s3_async_deployment_completed.md` (this file)
 
 #### 3.2 Modified Files
+
 - `src/api/routes/upload.py`
   - Added `USE_S3` environment variable support
   - S3 upload logic
@@ -164,6 +172,7 @@ Configuration ID: YTEwYTczNDAtOGNhNy00OTFkLWI2YjAtYzM0YzAwODJhYTMw
 ### 前置條件
 
 1. **更新 Backend Lambda 環境變數**:
+
 ```bash
 aws-vault exec gc-playground-ting-chatbot -- aws lambda update-function-configuration \
     --function-name hr-chatbot-backend \
@@ -179,6 +188,7 @@ aws-vault exec gc-playground-ting-chatbot -- aws lambda update-function-configur
 ```
 
 2. **更新 Backend Lambda 代碼** (如果需要):
+
 ```bash
 # 重新構建並推送 Backend Lambda 鏡像
 docker build --platform linux/amd64 -f Dockerfile.backend -t hr-chatbot-backend:latest .
@@ -203,6 +213,7 @@ curl -X POST https://8lvsiaz5nl.execute-api.ap-northeast-1.amazonaws.com/upload/
 ```
 
 **期望結果**:
+
 - HTTP 200 OK
 - 快速回應 (< 5秒)
 - Response: `{"status": "success", "message": "上傳成功"}`
@@ -216,6 +227,7 @@ aws-vault exec gc-playground-ting-chatbot -- \
 ```
 
 **期望結果**:
+
 - 看到上傳的文件: `{document-id}_{filename}.pdf`
 
 #### Test 3: 驗證 Lambda 觸發
@@ -227,6 +239,7 @@ aws-vault exec gc-playground-ting-chatbot -- \
 ```
 
 **期望結果**:
+
 - Log 顯示: "Received event"
 - Log 顯示: "Processing S3 object"
 - Log 顯示: "Document processing completed"
@@ -295,6 +308,7 @@ aws-vault exec gc-playground-ting-chatbot -- aws cloudwatch put-metric-alarm \
 ### 監控 Dashboard
 
 關鍵指標:
+
 - **File Processor Lambda**:
   - Invocations
   - Duration (avg, max)
@@ -318,26 +332,26 @@ aws-vault exec gc-playground-ting-chatbot -- aws cloudwatch put-metric-alarm \
 
 ### 新增成本
 
-| 項目 | 月成本 | 說明 |
-|------|--------|------|
-| S3 存儲 (10GB) | $0.25 | Standard storage |
-| S3 請求 (1000) | $0.01 | PUT/GET requests |
-| File Processor Lambda | $3.00 | 額外處理時間 |
-| S3 Gateway Endpoint | $0 | **免費!** |
-| **新增總計** | **$3.26/月** | |
+| 項目                  | 月成本       | 說明             |
+| --------------------- | ------------ | ---------------- |
+| S3 存儲 (10GB)        | $0.25        | Standard storage |
+| S3 請求 (1000)        | $0.01        | PUT/GET requests |
+| File Processor Lambda | $3.00        | 額外處理時間     |
+| S3 Gateway Endpoint   | $0           | **免費!**        |
+| **新增總計**          | **$3.26/月** |                  |
 
 ### 總成本對比
 
-| 項目 | 舊成本 | 新成本 | 變化 |
-|------|--------|--------|------|
-| Aurora Serverless | $44 | $44 | - |
-| VPC Endpoints | $15 | $15 | - |
-| Lambda (Backend) | $5 | $5 | - |
-| Lambda (File Processor) | $0 | $3 | +$3 |
-| S3 | $0 | $0.26 | +$0.26 |
-| App Runner | $10 | $10 | - |
-| API Gateway | $1 | $1 | - |
-| **總計** | **$75** | **$78.26** | **+$3.26 (4.3%)** |
+| 項目                    | 舊成本  | 新成本     | 變化              |
+| ----------------------- | ------- | ---------- | ----------------- |
+| Aurora Serverless       | $44     | $44        | -                 |
+| VPC Endpoints           | $15     | $15        | -                 |
+| Lambda (Backend)        | $5      | $5         | -                 |
+| Lambda (File Processor) | $0      | $3         | +$3               |
+| S3                      | $0      | $0.26      | +$0.26            |
+| App Runner              | $10     | $10        | -                 |
+| API Gateway             | $1      | $1         | -                 |
+| **總計**                | **$75** | **$78.26** | **+$3.26 (4.3%)** |
 
 **結論**: 以 4.3% 的成本增加,換取 90% 的性能提升和顯著的可靠性改善。
 
@@ -350,6 +364,7 @@ aws-vault exec gc-playground-ting-chatbot -- aws cloudwatch put-metric-alarm \
 **症狀**: Lambda timeout 或無法讀取 S3 文件
 
 **檢查**:
+
 ```bash
 # 確認 VPC Endpoint
 aws-vault exec gc-playground-ting-chatbot -- \
@@ -367,6 +382,7 @@ aws-vault exec gc-playground-ting-chatbot -- \
 **症狀**: 文件上傳後,Lambda 沒有執行
 
 **檢查**:
+
 ```bash
 # 驗證 S3 Notification
 aws-vault exec gc-playground-ting-chatbot -- \
@@ -385,6 +401,7 @@ aws-vault exec gc-playground-ting-chatbot -- \
 **症狀**: Document status = 'failed'
 
 **檢查**:
+
 ```bash
 # 查看詳細錯誤
 aws-vault exec gc-playground-ting-chatbot -- \
@@ -392,6 +409,7 @@ aws-vault exec gc-playground-ting-chatbot -- \
 ```
 
 **常見原因**:
+
 1. Bedrock quota exceeded
 2. Database connection timeout
 3. VPC Endpoint 未配置
@@ -465,6 +483,7 @@ aws-vault exec gc-playground-ting-chatbot -- \
 ---
 
 **下一步行動**:
+
 1. 更新 Backend Lambda 環境變數
 2. 執行端到端測試
 3. 設置監控告警

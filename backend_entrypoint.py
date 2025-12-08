@@ -9,6 +9,10 @@ import logging
 import sys
 from pathlib import Path
 
+from mangum import Mangum
+
+from src.main import app
+
 # Ensure src module can be imported from any working directory
 project_root = Path(__file__).parent.absolute()
 if str(project_root) not in sys.path:
@@ -20,11 +24,6 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
-
-# Import FastAPI app and create Mangum handler
-from mangum import Mangum
-
-from src.main import app
 
 # Create Mangum adapter for Lambda
 handler = Mangum(app, lifespan="off")

@@ -128,7 +128,9 @@ class APIClient:
             timeout=settings.HTTP_TIMEOUT_SHORT,
         )
 
-    def upload_to_s3(self, presigned_url: str, content_type: str, file_path: str) -> requests.Response:
+    def upload_to_s3(
+        self, presigned_url: str, content_type: str, file_path: str
+    ) -> requests.Response:
         """
         Upload file directly to S3 using pre-signed PUT URL.
 

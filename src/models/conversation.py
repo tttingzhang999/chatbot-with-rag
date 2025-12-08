@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import Column, DateTime, ForeignKey, String, Text, Index
+from sqlalchemy import Column, DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
@@ -108,4 +108,6 @@ class Message(Base):
     )
 
     def __repr__(self):
-        return f"<Message(id={self.id}, role='{self.role}', conversation_id={self.conversation_id})>"
+        return (
+            f"<Message(id={self.id}, role='{self.role}', conversation_id={self.conversation_id})>"
+        )

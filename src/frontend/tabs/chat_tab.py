@@ -41,7 +41,9 @@ def send_message(
 
             # Add to chat history in messages format
             chat_history.append({"role": "user", "content": message})
-            chat_history.append({"role": "assistant", "content": data["assistant_message"]["content"]})
+            chat_history.append(
+                {"role": "assistant", "content": data["assistant_message"]["content"]}
+            )
             return chat_history, "", "✅ 訊息已發送", gr.update(visible=True)
         else:
             chat_history.append({"role": "user", "content": message})
@@ -139,7 +141,10 @@ def load_conversation_messages(conversation_id: str) -> list:
             # Convert to messages format
             messages = data["messages"]
             chat_history = [
-                {"role": msg.get("role", "user" if i % 2 == 0 else "assistant"), "content": msg["content"]}
+                {
+                    "role": msg.get("role", "user" if i % 2 == 0 else "assistant"),
+                    "content": msg["content"],
+                }
                 for i, msg in enumerate(messages)
             ]
 

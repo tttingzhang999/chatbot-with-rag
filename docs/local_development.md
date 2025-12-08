@@ -5,6 +5,7 @@ This guide explains how to run the HR Chatbot locally for development, without A
 ## Overview
 
 The local development setup includes:
+
 - **FastAPI Backend** (port 8000): REST API for chat and authentication
 - **Gradio Frontend** (port 7860): Web interface for users
 - **PostgreSQL**: Local database for storing conversations
@@ -70,6 +71,7 @@ python -m uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 The API will be available at:
+
 - API: http://localhost:8000
 - Interactive docs: http://localhost:8000/docs
 
@@ -86,6 +88,7 @@ python src/app.py
 ```
 
 The Gradio interface will be available at:
+
 - http://localhost:7860
 
 ## Testing
@@ -162,7 +165,7 @@ hr-chatbot/
 
 - `POST /auth/login` - Login with username
   ```json
-  {"username": "test_user"}
+  { "username": "test_user" }
   ```
 
 ### Chat
@@ -194,6 +197,7 @@ hr-chatbot/
 Currently using these tables:
 
 ### conversations
+
 - `id`: UUID primary key
 - `user_id`: User identifier
 - `title`: Conversation title
@@ -201,6 +205,7 @@ Currently using these tables:
 - `metadata`: JSONB for flexible data
 
 ### messages
+
 - `id`: UUID primary key
 - `conversation_id`: Foreign key to conversations
 - `role`: "user" or "assistant"
@@ -209,12 +214,14 @@ Currently using these tables:
 - `created_at`: Timestamp
 
 ### Not yet used
+
 - `documents`: For uploaded files (future)
 - `document_chunks`: For RAG chunks (future)
 
 ## Current Limitations
 
 ### What's Working
+
 ✅ User authentication (simple, username-only)
 ✅ Multi-turn conversations
 ✅ Conversation history
@@ -222,6 +229,7 @@ Currently using these tables:
 ✅ Database persistence
 
 ### What's Not Yet Implemented
+
 ❌ LLM integration (using echo instead)
 ❌ Document processing (files uploaded but not processed)
 ❌ RAG / Hybrid search
@@ -263,6 +271,7 @@ git commit -m "your message"
 **Error**: `ModuleNotFoundError: No module named 'src'`
 
 **Solution**: Make sure you installed the package in editable mode:
+
 ```bash
 uv pip install -e ".[dev]"
 ```
@@ -272,6 +281,7 @@ uv pip install -e ".[dev]"
 **Error**: `could not connect to server: Connection refused`
 
 **Solution**: Make sure PostgreSQL is running:
+
 ```bash
 # Check status
 pg_isready
@@ -285,6 +295,7 @@ brew services start postgresql@15
 **Error**: `Cannot connect to API`
 
 **Solution**: Make sure backend is running on port 8000:
+
 ```bash
 curl http://localhost:8000/health
 ```

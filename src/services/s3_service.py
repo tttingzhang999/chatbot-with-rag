@@ -61,15 +61,15 @@ class S3Service:
         try:
             # Generate pre-signed PUT URL (simpler than POST)
             presigned_url = self.s3_client.generate_presigned_url(
-                'put_object',
+                "put_object",
                 Params={
-                    'Bucket': self.bucket_name,
-                    'Key': s3_key,
-                    'ContentType': content_type,
-                    'Metadata': {
-                        'document-id': document_id,
-                        'file-type': file_type,
-                    }
+                    "Bucket": self.bucket_name,
+                    "Key": s3_key,
+                    "ContentType": content_type,
+                    "Metadata": {
+                        "document-id": document_id,
+                        "file-type": file_type,
+                    },
                 },
                 ExpiresIn=expiration,
             )

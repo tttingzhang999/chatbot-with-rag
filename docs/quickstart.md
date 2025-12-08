@@ -41,6 +41,7 @@ uv pip install -e ".[dev]"
 ```
 
 This will install all required dependencies defined in `pyproject.toml`, including:
+
 - Core dependencies (FastAPI, SQLAlchemy, etc.)
 - Development dependencies (ruff, pre-commit, pytest)
 
@@ -57,6 +58,7 @@ pre-commit run --all-files
 ```
 
 The pre-commit hooks will automatically:
+
 - Run ruff linter and formatter
 - Check for common issues (large files, merge conflicts, etc.)
 - Run security checks with bandit

@@ -7,6 +7,7 @@
 ### 1. 基礎架構
 
 #### 資料庫設計
+
 - ✅ PostgreSQL schema 設計（4個表）
   - `documents` - 文件元資料
   - `document_chunks` - 文件片段與向量
@@ -18,6 +19,7 @@
 - ✅ Alembic 資料庫遷移設定
 
 #### 開發環境
+
 - ✅ uv 套件管理設定（pyproject.toml）
 - ✅ ruff linting 與 formatting 配置
 - ✅ pre-commit hooks 設定
@@ -26,10 +28,12 @@
 ### 2. 後端 API (FastAPI)
 
 #### 認證系統
+
 - ✅ `/auth/login` - 簡單的使用者名稱登入
 - ✅ 使用 X-User-Id header 進行認證
 
 #### 對話 API
+
 - ✅ `POST /chat/message` - 發送訊息並獲得回應
   - 支援多輪對話
   - 自動儲存對話歷史到資料庫
@@ -40,11 +44,13 @@
 - ✅ `DELETE /chat/conversations/{id}` - 刪除對話
 
 #### 文件上傳
+
 - ✅ `POST /upload/document` - 接收文件上傳
   - 目前接收檔案但不處理
   - 未來將整合 S3 上傳和文件處理
 
 #### API 文件
+
 - ✅ 自動生成的 OpenAPI 文件（/docs）
 - ✅ CORS 設定（支援跨域請求）
 - ✅ 健康檢查端點（/health）
@@ -52,6 +58,7 @@
 ### 3. 服務層 (Business Logic)
 
 #### Chat Service
+
 - ✅ `get_or_create_conversation()` - 取得或建立對話
 - ✅ `save_message()` - 儲存訊息到資料庫
 - ✅ `generate_response()` - 生成回應（目前為 echo）
@@ -60,17 +67,20 @@
 - ✅ `delete_conversation()` - 刪除對話
 
 #### Auth Service
+
 - ✅ `validate_user()` - 驗證使用者（簡易版）
 - ✅ `get_user_display_name()` - 取得使用者顯示名稱
 
 ### 4. 前端介面 (Gradio)
 
 #### 登入頁面
+
 - ✅ 使用者名稱輸入
 - ✅ 登入狀態顯示
 - ✅ 成功登入後自動切換到對話頁面
 
 #### 對話介面
+
 - ✅ Chatbot 對話框（顯示多輪對話）
 - ✅ 訊息輸入框（支援 Enter 發送）
 - ✅ 發送按鈕
@@ -87,11 +97,13 @@
 ### 5. 工具與腳本
 
 #### 啟動腳本
+
 - ✅ `scripts/init_db.sh` - 初始化資料庫
 - ✅ `scripts/start_backend.sh` - 啟動 FastAPI 後端
 - ✅ `scripts/start_frontend.sh` - 啟動 Gradio 前端
 
 #### 測試腳本
+
 - ✅ `scripts/test_api.py` - API 端點測試
 
 ### 6. 文件
@@ -173,6 +185,7 @@ Lambda (FastAPI)
 ## 測試狀態
 
 ### 已測試
+
 - ✅ API 端點基本功能
 - ✅ 資料庫連接
 - ✅ ORM 操作
@@ -180,6 +193,7 @@ Lambda (FastAPI)
 - ✅ 訊息歷史查詢
 
 ### 待測試
+
 - ❌ 單元測試（pytest）
 - ❌ 整合測試
 - ❌ 負載測試
@@ -244,6 +258,7 @@ Lambda (FastAPI)
 ### 立即可以開始的工作
 
 1. **測試現有功能**
+
    ```bash
    ./scripts/init_db.sh
    ./scripts/start_backend.sh
@@ -340,6 +355,7 @@ hr-chatbot/
 ## 結論
 
 目前已完成的工作為整個專案建立了堅實的基礎：
+
 - ✅ 完整的資料庫架構（可擴展到 RAG）
 - ✅ 功能完整的 FastAPI 後端
 - ✅ 可用的 Gradio 前端

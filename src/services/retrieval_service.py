@@ -196,9 +196,7 @@ class RetrievalService:
             semantic_ratio = semantic_ratio or settings.SEMANTIC_SEARCH_RATIO
             bm25_ratio = 1.0 - semantic_ratio
 
-            logger.info(
-                f"Hybrid search: semantic_ratio={semantic_ratio}, bm25_ratio={bm25_ratio}"
-            )
+            logger.info(f"Hybrid search: semantic_ratio={semantic_ratio}, bm25_ratio={bm25_ratio}")
 
             # Generate query embedding for semantic search with throttling handling
             try:
@@ -242,9 +240,7 @@ class RetrievalService:
             top_results = merged_results[:top_k]
 
             # Filter by relevance threshold to avoid returning irrelevant documents
-            final_results = [
-                r for r in top_results if r["score"] >= settings.RELEVANCE_THRESHOLD
-            ]
+            final_results = [r for r in top_results if r["score"] >= settings.RELEVANCE_THRESHOLD]
 
             logger.info(
                 f"Hybrid search returned {len(final_results)} results "

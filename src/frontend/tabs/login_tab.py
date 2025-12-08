@@ -58,7 +58,9 @@ def login(
             )
 
             return (
-                gr.update(value=f"✅ 歡迎回來, {username}!", visible=True),  # Status with visibility
+                gr.update(
+                    value=f"✅ 歡迎回來, {username}!", visible=True
+                ),  # Status with visibility
                 gr.update(selected=2),  # Switch to chat tab (index 2)
                 gr.update(interactive=True),  # Enable send_btn
                 gr.update(interactive=True),  # Enable upload_btn

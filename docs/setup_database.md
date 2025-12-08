@@ -95,6 +95,7 @@ python -m src.db.init_db
 ```
 
 This will:
+
 - Enable pgvector and pg_trgm extensions
 - Create all tables defined in the models
 
@@ -223,6 +224,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 **Solution**: Install pgvector extension on your PostgreSQL instance.
 
 For local PostgreSQL:
+
 ```bash
 # macOS with Homebrew
 brew install pgvector
@@ -251,6 +253,7 @@ ALTER USER your_user WITH SUPERUSER;
 ### Issue: Connection refused from Lambda
 
 **Solution**:
+
 - Ensure Lambda is in the same VPC as Aurora
 - Configure security groups to allow traffic
 - Use Secrets Manager for credential management

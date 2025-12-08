@@ -11,7 +11,6 @@ This module provides a wrapper around AWS Bedrock services for:
 import json
 import logging
 import time
-from typing import Any
 
 import boto3
 from botocore.config import Config
@@ -89,17 +88,12 @@ class BedrockClient:
         """
         try:
             # Convert conversation history to LangChain message format
-            messages = self._format_conversation_history(
-                conversation_history, system_prompt
-            )
+            messages = self._format_conversation_history(conversation_history, system_prompt)
 
             # Add the current user message
             messages.append(HumanMessage(content=user_message))
 
-            logger.debug(
-                f"Invoking Claude with {len(messages)} messages "
-                f"(including system prompt)"
-            )
+            logger.debug(f"Invoking Claude with {len(messages)} messages (including system prompt)")
 
             # Invoke the model
             response = self.llm.invoke(messages)
@@ -107,10 +101,7 @@ class BedrockClient:
             # Extract the response content
             response_text = response.content
 
-            logger.info(
-                f"Claude response generated successfully "
-                f"({len(response_text)} characters)"
-            )
+            logger.info(f"Claude response generated successfully ({len(response_text)} characters)")
 
             return response_text
 

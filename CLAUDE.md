@@ -27,11 +27,13 @@ The system consists of two main Lambda functions deployed as container images:
 ### Data Flow
 
 **Document Processing**:
+
 ```
 S3 Upload → Lambda Trigger → Chunking → Cohere Embed v4 → Aurora PostgreSQL (vectors + BM25 index)
 ```
 
 **Query Processing**:
+
 ```
 User Question → Question Embedding → Hybrid Search (Aurora) → Context Retrieval → Claude Sonnet 4 → Answer
 ```
@@ -41,7 +43,7 @@ User Question → Question Embedding → Hybrid Search (Aurora) → Context Retr
 - **Compute**: Lambda (container images from ECR)
 - **Storage**: S3 (raw documents), Aurora PostgreSQL Serverless (vectors + metadata)
 - **AI/ML**: Amazon Bedrock (Claude Sonnet 4, Cohere Embed v4)
-- **Network**: API Gateway, Route 53 (*.going.cloud), Certificate Manager
+- **Network**: API Gateway, Route 53 (\*.going.cloud), Certificate Manager
 - **Security**: Secrets Manager (DB credentials), IAM
 - **Frontend**: Gradio interface
 
@@ -121,6 +123,7 @@ uv run alembic downgrade -1
 ```
 
 **Important Notes:**
+
 - Always use `uv run` prefix when running alembic commands
 - Review auto-generated migrations before applying them
 - Test migrations on local database before production
@@ -162,17 +165,20 @@ docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/hr-chatbot:latest
 ### RAG Implementation
 
 **Hybrid Search Strategy**:
+
 - Combines Semantic Search (pgvector cosine similarity) with BM25 (keyword-based TFIDF)
 - Default ratio: 50/50, but configurable as hyperparameter
 - Example: Retrieve top 10 chunks (5 from semantic, 5 from BM25)
 
 **Hyperparameters to Tune**:
+
 - Chunk size and overlap size
 - Number of retrieved chunks (top K)
 - Semantic vs BM25 ratio
 - Use validation set for tuning, test set for final evaluation
 
 **Multi-turn Conversation**:
+
 - Maintain conversation history in context
 - Design system prompts carefully
 - Implement context window management to avoid token limits
@@ -181,6 +187,7 @@ docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/hr-chatbot:latest
 ### Database Schema
 
 Aurora PostgreSQL with pgvector extension:
+
 - Stores text chunks with metadata
 - Vector embeddings (from Cohere Embed v4)
 - BM25 index data (TFIDF-based)
@@ -198,6 +205,7 @@ Aurora PostgreSQL with pgvector extension:
 ### Commit Convention
 
 Follow Conventional Commits format:
+
 - `feat:` - New features
 - `fix:` - Bug fixes
 - `docs:` - Documentation updates
@@ -242,6 +250,7 @@ EMBEDDING_MODEL_ID=cohere.embed-v4
 ## Architecture Documentation
 
 For detailed architecture diagrams including RAG flow, AWS services integration, and sequence diagrams, refer to `architecture.md`. The diagrams use Mermaid format and show:
+
 - RAG core processing flow (document processing + query/chat)
 - Complete AWS service architecture
 - Detailed data flow sequence diagrams

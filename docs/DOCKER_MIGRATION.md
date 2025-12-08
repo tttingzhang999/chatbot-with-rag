@@ -3,6 +3,7 @@
 ## 📋 變更摘要
 
 ### 舊架構（3 個 Dockerfile）
+
 - ❌ `Dockerfile.backend` - Backend Lambda
 - ❌ `Dockerfile.file-processor` - File Processor Lambda
 - ❌ `Dockerfile.frontend` - Gradio Frontend
@@ -10,6 +11,7 @@
 - ❌ 重複的依賴安裝層（浪費構建時間和存儲空間）
 
 ### 新架構（2 個 Dockerfile）
+
 - ✅ `Dockerfile.lambda` - 統一的 Lambda Dockerfile（使用 build targets）
 - ✅ `Dockerfile.frontend` - 優化的 Frontend Dockerfile
 - ✅ 使用 uv 虛擬環境（符合官方最佳實踐）
@@ -22,6 +24,7 @@
 ## 🎯 主要改進
 
 ### 1. **合併 Lambda Dockerfiles**
+
 兩個 Lambda 函數（backend 和 file-processor）使用相同的依賴和基礎鏡像，現在合併為一個 `Dockerfile.lambda`，使用 multi-stage build targets：
 
 ```bash
@@ -35,11 +38,13 @@ docker build -f Dockerfile.lambda --target file-processor -t hr-chatbot-file-pro
 ```
 
 **優勢**：
+
 - ✅ 共享 builder stage，依賴只安裝一次
 - ✅ 共享 runtime-base stage，減少重複層
 - ✅ 更容易維護（一個文件 vs 兩個文件）
 
 ### 2. **使用 uv 虛擬環境**
+
 按照 [uv 官方文檔](https://docs.astral.sh/uv/guides/integration/docker/) 的最佳實踐：
 
 ```dockerfile
@@ -53,11 +58,13 @@ RUN uv sync --frozen --no-dev --no-editable
 ```
 
 **優勢**：
+
 - ✅ 隔離依賴，避免系統 Python 污染
 - ✅ 更好的可重現性
 - ✅ 符合 uv 設計理念
 
 ### 3. **優化層級緩存**
+
 使用 `--no-install-project` 分離依賴和項目代碼：
 
 ```dockerfile
@@ -71,15 +78,18 @@ RUN uv sync --frozen --no-dev --no-editable
 ```
 
 **優勢**：
+
 - ✅ 代碼變動時，不需要重新安裝依賴
 - ✅ 構建速度提升 50-70%
 
 ### 4. **啟用 Bytecode 編譯**
+
 ```dockerfile
 ENV UV_COMPILE_BYTECODE=1
 ```
 
 **優勢**：
+
 - ✅ 減少 Lambda 冷啟動時間
 - ✅ 提升運行時性能
 
@@ -202,13 +212,13 @@ docker run -p 7860:7860 \
 
 ## 📊 效能比較
 
-| 指標 | 舊架構 | 新架構 | 改進 |
-|------|--------|--------|------|
-| **構建時間（首次）** | ~180s | ~120s | ⬇️ 33% |
-| **構建時間（代碼變動）** | ~180s | ~30s | ⬇️ 83% |
-| **鏡像大小（Backend）** | ~950 MB | ~920 MB | ⬇️ 3% |
-| **Lambda 冷啟動** | ~2.5s | ~1.8s | ⬇️ 28% |
-| **Dockerfile 數量** | 3 個 | 2 個 | ⬇️ 33% |
+| 指標                     | 舊架構  | 新架構  | 改進   |
+| ------------------------ | ------- | ------- | ------ |
+| **構建時間（首次）**     | ~180s   | ~120s   | ⬇️ 33% |
+| **構建時間（代碼變動）** | ~180s   | ~30s    | ⬇️ 83% |
+| **鏡像大小（Backend）**  | ~950 MB | ~920 MB | ⬇️ 3%  |
+| **Lambda 冷啟動**        | ~2.5s   | ~1.8s   | ⬇️ 28% |
+| **Dockerfile 數量**      | 3 個    | 2 個    | ⬇️ 33% |
 
 ---
 
@@ -229,6 +239,7 @@ docker run -p 7860:7860 \
 ## ⚠️ 重要注意事項
 
 ### 1. Lambda Handler 路徑
+
 新的 Dockerfile 使用正確的 handler 路徑：
 
 ```dockerfile
@@ -242,6 +253,7 @@ CMD ["src.lambda_handlers.file_processor.lambda_handler"]
 確保 Lambda 配置中的 handler 設定與此匹配。
 
 ### 2. 虛擬環境路徑
+
 新架構使用虛擬環境，確保 `PATH` 環境變量正確設置：
 
 ```dockerfile
@@ -250,6 +262,7 @@ ENV VIRTUAL_ENV="${LAMBDA_TASK_ROOT}/.venv"
 ```
 
 ### 3. BuildKit 緩存
+
 為了使用 `--mount=type=cache`，需要啟用 Docker BuildKit：
 
 ```bash
@@ -265,6 +278,7 @@ DOCKER_BUILDKIT=1 docker build ...
 ```
 
 ### 4. Multi-platform 構建
+
 Lambda 需要 `linux/amd64` 架構：
 
 ```bash
@@ -280,6 +294,7 @@ docker buildx build --platform linux/amd64 ...
 ## 🆘 故障排除
 
 ### 問題 1: "uv sync" 失敗
+
 ```bash
 # 確認 uv.lock 是最新的
 uv lock
@@ -289,6 +304,7 @@ docker build --no-cache ...
 ```
 
 ### 問題 2: 找不到 lambda_handlers
+
 ```bash
 # 確認目錄結構
 ls -la lambda_handlers/
@@ -298,6 +314,7 @@ COPY lambda_handlers/ ./lambda_handlers/
 ```
 
 ### 問題 3: 虛擬環境路徑問題
+
 ```bash
 # 確認 PATH 設置
 docker run --rm <image> env | grep PATH
@@ -322,6 +339,7 @@ PATH=/var/task/.venv/bin:...
 遷移完成並驗證後，可以選擇：
 
 1. **保留作為備份**（重命名）
+
    ```bash
    mv Dockerfile.backend Dockerfile.backend.old
    mv Dockerfile.file-processor Dockerfile.file-processor.old

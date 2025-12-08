@@ -66,9 +66,7 @@ class SecretsManager:
             elif error_code == "InvalidParameterException":
                 raise ValueError(f"Invalid parameter for secret: {secret_name}") from e
             elif error_code == "DecryptionFailure":
-                raise RuntimeError(
-                    f"Cannot decrypt secret {secret_name} using KMS"
-                ) from e
+                raise RuntimeError(f"Cannot decrypt secret {secret_name} using KMS") from e
             elif error_code == "InternalServiceError":
                 raise RuntimeError(
                     f"Internal service error when fetching secret {secret_name}"
@@ -78,9 +76,7 @@ class SecretsManager:
 
         except json.JSONDecodeError as e:
             logger.error(f"Secret {secret_name} contains invalid JSON")
-            raise ValueError(
-                f"Secret {secret_name} is not valid JSON: {str(e)}"
-            ) from e
+            raise ValueError(f"Secret {secret_name} is not valid JSON: {str(e)}") from e
 
     def get_database_credentials(self, secret_name: str) -> dict:
         """
@@ -101,9 +97,7 @@ class SecretsManager:
         missing_keys = [key for key in required_keys if key not in secret]
 
         if missing_keys:
-            raise ValueError(
-                f"Database secret missing required keys: {', '.join(missing_keys)}"
-            )
+            raise ValueError(f"Database secret missing required keys: {', '.join(missing_keys)}")
 
         return {
             "host": secret["host"],
@@ -132,9 +126,7 @@ class SecretsManager:
         missing_keys = [key for key in required_keys if key not in secret]
 
         if missing_keys:
-            raise ValueError(
-                f"App secret missing required keys: {', '.join(missing_keys)}"
-            )
+            raise ValueError(f"App secret missing required keys: {', '.join(missing_keys)}")
 
         return secret
 

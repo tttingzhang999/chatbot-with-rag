@@ -22,6 +22,7 @@
 ### 问题 1: Lambda 文件权限错误
 
 **症状**:
+
 ```
 PermissionError: [Errno 13] Permission denied: '/var/task/backend_handler.py'
 ```
@@ -51,6 +52,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ### 问题 2: Lambda 写入文件到只读文件系统
 
 **症状**:
+
 ```
 OSError: [Errno 30] Read-only file system: 'uploads'
 ```
@@ -82,6 +84,7 @@ except OSError:
 ### 问题 3: 数据库连接失败导致 Lambda 无法启动
 
 **症状**:
+
 ```
 ArgumentError: Could not parse SQLAlchemy URL from given URL string
 ```
@@ -111,6 +114,7 @@ aws lambda update-function-configuration \
 ### 问题 4: Lambda 初始化超时
 
 **症状**:
+
 ```
 INIT_REPORT Init Duration: 9999.48 ms Phase: init Status: timeout
 ```
@@ -119,6 +123,7 @@ INIT_REPORT Init Duration: 9999.48 ms Phase: init Status: timeout
 Lambda 冷启动时间过长，通常是由于依赖包过多或数据库连接超时。
 
 **解决方案**:
+
 1. 减少依赖包大小
 2. 使用 Lambda 层（Layers）存储大型依赖
 3. 延迟初始化数据库连接
@@ -138,6 +143,7 @@ aws lambda update-function-configuration \
 ### 问题 5: App Runner 健康检查失败，无应用日志
 
 **症状**:
+
 ```
 Health check failed on protocol `TCP` [Port: '7860']
 No application logs available
@@ -147,6 +153,7 @@ No application logs available
 **架构不匹配** - 在 Apple M2 (ARM64) 上构建的镜像无法在 App Runner (x86_64) 上运行。
 
 **诊断过程**:
+
 1. 本地测试镜像可以正常运行 ✅
 2. App Runner 健康检查失败 ❌
 3. 没有任何应用日志 ❌ (说明容器根本没有启动)
@@ -165,12 +172,14 @@ docker build --platform linux/amd64 -f Dockerfile.frontend -t hr-chatbot-fronten
 ```
 
 **验证镜像架构**:
+
 ```bash
 docker image inspect <image-name> --format '{{.Architecture}}'
 # 应该输出: amd64
 ```
 
 **参考文档**:
+
 - [AWS App Runner Health Check Failed - Stack Overflow](https://stackoverflow.com/questions/69322032/aws-app-runner-create-failed-on-health-check)
 - [AWS App Runner Troubleshooting](https://docs.aws.amazon.com/apprunner/latest/dg/troubleshooting.html)
 
@@ -187,6 +196,7 @@ App Runner 自动设置 `PORT` 环境变量（默认 8080），但应用使用�
 **两种解决方案**:
 
 **方案 A - 让应用读取 PORT 环境变量**:
+
 ```python
 # frontend_entrypoint.py
 import os
@@ -199,6 +209,7 @@ demo.launch(
 ```
 
 **方案 B - 明确指定端口（推荐）**:
+
 ```bash
 # App Runner 配置
 {
@@ -238,6 +249,7 @@ aws apprunner update-service \
 ```
 
 **配置说明**:
+
 - `Timeout`: 10 秒（原来 2 秒）- 给应用足够启动时间
 - `Interval`: 10 秒（原来 5 秒）- 检查间隔
 - `UnhealthyThreshold`: 3（原来 5）- 失败 3 次才标记为不健康
@@ -250,6 +262,7 @@ aws apprunner update-service \
 使用 `uv run` 启动应用时，每次都重新检查依赖，导致启动慢。
 
 **原因**:
+
 ```dockerfile
 # 慢的方式
 CMD ["uv", "run", "python", "frontend_entrypoint.py"]
@@ -274,6 +287,7 @@ CMD [".venv/bin/python", "frontend_entrypoint.py"]
 ### 问题 9: 多平台镜像格式不兼容
 
 **症状**:
+
 ```
 The image manifest, config or layer media type for the source image is not supported
 ```
@@ -292,6 +306,7 @@ docker build --platform linux/amd64 \
 ```
 
 **检查镜像格式**:
+
 ```bash
 aws ecr describe-images \
     --repository-name <repo-name> \
@@ -322,6 +337,7 @@ docker build -f Dockerfile -t <image-name> .
 ```
 
 **验证清单**:
+
 ```bash
 # 1. 检查架构
 docker image inspect <image> --format '{{.Architecture}}'
@@ -341,6 +357,7 @@ docker push <ecr-uri>
 ### Docker 镜像构建
 
 #### Backend (Lambda)
+
 ```bash
 docker build --platform linux/amd64 \
     --provenance=false \
@@ -350,11 +367,13 @@ docker build --platform linux/amd64 \
 ```
 
 **关键点**:
+
 - `--platform linux/amd64`: Lambda 只支持 x86_64
 - `--provenance=false`: 避免多平台 manifest
 - `--output type=docker`: 使用 Docker 格式
 
 #### Frontend (App Runner)
+
 ```bash
 docker build --platform linux/amd64 \
     -f Dockerfile.frontend \
@@ -362,6 +381,7 @@ docker build --platform linux/amd64 \
 ```
 
 **关键点**:
+
 - App Runner 也只支持 x86_64
 - 不需要 `--provenance=false`（App Runner 兼容性更好）
 
@@ -370,6 +390,7 @@ docker build --platform linux/amd64 \
 ### Lambda 配置
 
 **环境变量**:
+
 ```bash
 DATABASE_URL=postgresql://placeholder:placeholder@localhost/placeholder
 ENABLE_RAG=false
@@ -377,11 +398,13 @@ DEBUG=false
 ```
 
 **资源配置**:
+
 - Memory: 1024 MB（推荐）
 - Timeout: 30 seconds
 - Ephemeral Storage: 512 MB（默认）
 
 **IAM Permissions**:
+
 - `AWSLambdaBasicExecutionRole` - CloudWatch Logs
 - `AmazonBedrockFullAccess` - Bedrock API 调用
 - `SecretsManagerReadWrite` - 读取数据库凭证（可选）
@@ -391,6 +414,7 @@ DEBUG=false
 ### App Runner 配置
 
 **镜像配置**:
+
 ```json
 {
   "Port": "7860",
@@ -404,6 +428,7 @@ DEBUG=false
 ```
 
 **健康检查配置**:
+
 ```json
 {
   "Protocol": "TCP",
@@ -415,6 +440,7 @@ DEBUG=false
 ```
 
 **实例配置**:
+
 - CPU: 1 vCPU
 - Memory: 2 GB
 
@@ -423,12 +449,14 @@ DEBUG=false
 ### 部署前检查清单
 
 #### 镜像验证
+
 - [ ] 架构是 `amd64`（使用 `docker image inspect`）
 - [ ] 本地可以运行（使用 `--platform linux/amd64`）
 - [ ] 镜像已推送到 ECR
 - [ ] ECR 镜像格式正确（Lambda 需要检查 manifest type）
 
 #### Lambda 验证
+
 - [ ] Handler 路径正确
 - [ ] 环境变量已设置
 - [ ] IAM Role 权限正确
@@ -436,12 +464,14 @@ DEBUG=false
 - [ ] /tmp 目录用于临时文件
 
 #### App Runner 验证
+
 - [ ] 端口配置正确（7860）
 - [ ] 健康检查超时足够（10 秒）
 - [ ] 环境变量包含 `BACKEND_API_URL`
 - [ ] IAM Role 可以访问 ECR
 
 #### 连通性测试
+
 - [ ] Backend `/health` 返回 200
 - [ ] Frontend 页面可以访问
 - [ ] Frontend 可以调用 Backend API
@@ -454,11 +484,13 @@ DEBUG=false
 #### Lambda 无法启动
 
 1. **检查 CloudWatch Logs**:
+
 ```bash
 aws logs tail /aws/lambda/<function-name> --follow --region ap-northeast-1
 ```
 
 2. **常见错误**:
+
 - 文件权限 → 添加 `chmod -R 755`
 - 依赖缺失 → 检查 Dockerfile 安装步骤
 - 环境变量 → 检查 `DATABASE_URL` 等必需变量
@@ -489,21 +521,25 @@ aws logs tail /aws/lambda/<function-name> --follow --region ap-northeast-1
 ## 常见命令参考
 
 ### 检查镜像架构
+
 ```bash
 docker image inspect <image-name> --format '{{.Architecture}}'
 ```
 
 ### 本地测试 amd64 镜像
+
 ```bash
 docker run --platform linux/amd64 -p 8080:8080 <image-name>
 ```
 
 ### 查看 Lambda 日志
+
 ```bash
 aws logs tail /aws/lambda/<function-name> --since 5m --region ap-northeast-1
 ```
 
 ### 更新 Lambda 环境变量
+
 ```bash
 aws lambda update-function-configuration \
     --function-name <function-name> \
@@ -512,6 +548,7 @@ aws lambda update-function-configuration \
 ```
 
 ### 更新 App Runner 服务
+
 ```bash
 aws apprunner update-service \
     --service-arn <service-arn> \
@@ -524,16 +561,19 @@ aws apprunner update-service \
 ## 参考资源
 
 ### AWS 官方文档
+
 - [Lambda Container Images](https://docs.aws.amazon.com/lambda/latest/dg/images-create.html)
 - [App Runner Troubleshooting](https://docs.aws.amazon.com/apprunner/latest/dg/troubleshooting.html)
 - [App Runner Environment Variables](https://docs.aws.amazon.com/apprunner/latest/dg/env-variable.html)
 - [App Runner Health Checks](https://docs.aws.amazon.com/apprunner/latest/dg/manage-configure-healthcheck.html)
 
 ### 社区资源
+
 - [AWS App Runner Health Check Failed - Stack Overflow](https://stackoverflow.com/questions/69322032/aws-app-runner-create-failed-on-health-check)
 - [AWS App Runner Health Check Fails Despite Successful Local Testing](https://stackoverflow.com/questions/77865613/aws-app-runner-health-check-fails-despite-successful-local-testing)
 
 ### 项目文档
+
 - [AWS 部署指南](./aws_deployment_guide.md) - 完整部署步骤
 - [本地开发指南](./local_development.md) - 本地测试
 - [架构文档](./architecture.md) - 系统架构
@@ -544,6 +584,7 @@ aws apprunner update-service \
 **维护者**: Ting Zhang
 
 **部署成功案例**:
+
 - Backend: Lambda + API Gateway ✅
 - Frontend: App Runner ✅
 - 架构: Apple M2 → amd64 镜像 → AWS 部署 ✅
