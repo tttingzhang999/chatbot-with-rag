@@ -14,6 +14,9 @@ export const API_ENDPOINTS = {
   UPLOAD_PROCESS_DOCUMENT: '/upload/process-document',
   UPLOAD_DOCUMENT_BY_ID: (id: string) => `/upload/documents/${id}`,
 
+  // Embed
+  EMBED_DOCUMENT_CHUNKS: (documentId: string) => `/embeds/documents/${documentId}/chunks`,
+
   // Profiles
   PROFILES: '/profiles',
   PROFILES_DEFAULT: '/profiles/default',

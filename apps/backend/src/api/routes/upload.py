@@ -74,6 +74,7 @@ class DocumentListItem(BaseModel):
     file_name: str
     file_type: str
     file_size: int
+    storage_type: str
     upload_date: str
     status: str
     error_message: str | None
@@ -252,11 +253,11 @@ def get_upload_config() -> ConfigResponse:
 
 @router.post("/local", response_model=LocalUploadResponse)
 async def upload_local_file(
+    current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
+    db: DBSession,
     file: UploadFile = File(...),
     profile_id: str | None = Form(None),
-    current_user: CurrentUser = None,
-    background_tasks: BackgroundTasks = None,
-    db: DBSession = None,
 ) -> LocalUploadResponse:
     """
     Upload file to local storage and trigger processing.
@@ -337,6 +338,7 @@ async def upload_local_file(
             file_path=str(file_path.absolute()),
             file_type=file_extension,
             file_size=file_size,
+            storage_type="local",
             status="pending",
         )
         db.add(document)
@@ -375,8 +377,8 @@ async def upload_local_file(
 @router.post("/presigned-url", response_model=PresignedUrlResponse)
 def get_presigned_upload_url(
     request: PresignedUrlRequest,
-    current_user: CurrentUser = None,
-    db: DBSession = None,
+    current_user: CurrentUser,
+    db: DBSession,
 ) -> PresignedUrlResponse:
     """
     Generate pre-signed S3 URL for direct client-to-S3 upload.
@@ -430,6 +432,7 @@ def get_presigned_upload_url(
             file_path="",  # Will be set after S3 upload
             file_type=file_type,
             file_size=request.file_size,
+            storage_type="cloud",
             status="pending",
         )
         db.add(document)
@@ -476,8 +479,8 @@ def get_presigned_upload_url(
 def trigger_document_processing(
     request: ProcessDocumentRequest,
     background_tasks: BackgroundTasks,
-    current_user: CurrentUser = None,
-    db: DBSession = None,
+    current_user: CurrentUser,
+    db: DBSession,
 ) -> ProcessDocumentResponse:
     """
     Trigger document processing after S3 upload completes.
@@ -565,8 +568,8 @@ def trigger_document_processing(
 
 @router.get("/documents", response_model=DocumentListResponse)
 def list_documents(
-    current_user: CurrentUser = None,
-    db: DBSession = None,
+    current_user: CurrentUser,
+    db: DBSession,
     profile_id: str | None = Query(None, description="Filter by profile ID"),
 ) -> DocumentListResponse:
     """
@@ -606,8 +609,8 @@ def list_documents(
 @router.delete("/documents/{document_id}", response_model=DeleteResponse)
 def delete_document_endpoint(
     document_id: str,
-    current_user: CurrentUser = None,
-    db: DBSession = None,
+    current_user: CurrentUser,
+    db: DBSession,
 ) -> DeleteResponse:
     """
     Delete a document and all its chunks.

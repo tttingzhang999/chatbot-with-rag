@@ -3,6 +3,7 @@ export interface Document {
   file_name: string;
   file_type: string;
   file_size: number;
+  storage_type: 'local' | 'cloud';
   upload_date: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   error_message: string | null;

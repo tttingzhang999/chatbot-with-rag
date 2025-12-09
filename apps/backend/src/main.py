@@ -5,7 +5,7 @@ FastAPI main application.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routes import auth, chat, profiles, upload
+from src.api.routes import auth, chat, embed, profiles, upload
 from src.core.config import settings
 
 # Create FastAPI app
@@ -27,6 +27,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router)
 app.include_router(chat.router)
+app.include_router(embed.router)
 app.include_router(profiles.router)
 app.include_router(upload.router)
 

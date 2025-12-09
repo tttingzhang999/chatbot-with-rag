@@ -1,0 +1,50 @@
+"""add storage_type to documents
+
+Revision ID: 979750027763
+Revises: 9ff57d084d8a
+Create Date: 2025-12-09 10:36:29.141325
+
+"""
+from alembic import op
+import sqlalchemy as sa
+
+
+# revision identifiers, used by Alembic.
+revision = '979750027763'
+down_revision = '9ff57d084d8a'
+branch_labels = None
+depends_on = None
+
+
+def upgrade() -> None:
+    # Add storage_type column as nullable first
+    op.add_column('documents', sa.Column('storage_type', sa.String(10), nullable=True))
+
+    # Migrate existing data: infer from file_path
+    op.execute("""
+        UPDATE documents
+        SET storage_type = CASE
+            WHEN file_path LIKE 's3://%' THEN 'cloud'
+            ELSE 'local'
+        END
+    """)
+
+    # Make non-nullable after data migration
+    op.alter_column('documents', 'storage_type', nullable=False)
+
+
+def downgrade() -> None:
+    # Check if column exists before dropping (handles case where column was never added)
+    conn = op.get_bind()
+    result = conn.execute(sa.text("""
+        SELECT EXISTS (
+            SELECT 1 
+            FROM information_schema.columns 
+            WHERE table_name = 'documents' 
+            AND column_name = 'storage_type'
+        )
+    """))
+    column_exists = result.scalar()
+    
+    if column_exists:
+        op.drop_column('documents', 'storage_type')
