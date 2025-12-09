@@ -4,8 +4,12 @@ import { useDocuments, useDeleteDocument } from '@/hooks/useDocuments';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export function DocumentList() {
-  const { documents, isLoading, error } = useDocuments();
+interface DocumentListProps {
+  profileId?: string;
+}
+
+export function DocumentList({ profileId }: DocumentListProps) {
+  const { documents, isLoading, error } = useDocuments(profileId);
   const { mutate: deleteDocument, isPending: isDeleting, variables: deletingId } = useDeleteDocument();
 
   if (isLoading) {

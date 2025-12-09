@@ -28,6 +28,12 @@ class Document(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
+    profile_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("prompt_profiles.id", ondelete="SET NULL"),
+        nullable=True,  # Nullable for backward compatibility
+        index=True,
+    )
     file_name = Column(String(255), nullable=False)
     file_path = Column(String(512), nullable=False)  # S3 path
     file_type = Column(String(50), nullable=False)  # pdf, docx, txt, etc.
@@ -42,6 +48,7 @@ class Document(Base):
     extra_metadata = Column(JSONB, default={})  # Additional flexible metadata
 
     # Relationships
+    profile = relationship("PromptProfile", back_populates="documents")
     chunks = relationship(
         "DocumentChunk",
         back_populates="document",

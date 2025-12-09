@@ -672,13 +672,16 @@ class DocumentProcessor:
             # Don't raise here to avoid masking original errors
 
 
-def get_user_documents(db: Session, user_id: UUID) -> list[dict[str, Any]]:
+def get_user_documents(
+    db: Session, user_id: UUID, profile_id: UUID | None = None
+) -> list[dict[str, Any]]:
     """
-    Get all documents uploaded by a user.
+    Get all documents uploaded by a user, optionally filtered by profile.
 
     Args:
         db: Database session
         user_id: User UUID
+        profile_id: Optional profile UUID to filter documents
 
     Returns:
         List of document metadata dictionaries
@@ -705,8 +708,13 @@ def get_user_documents(db: Session, user_id: UUID) -> list[dict[str, Any]]:
             Document.status,
             Document.error_message,
         )
-        .order_by(Document.upload_date.desc())
     )
+
+    # Add profile filtering when profile_id provided
+    if profile_id:
+        stmt = stmt.where(Document.profile_id == profile_id)
+
+    stmt = stmt.order_by(Document.upload_date.desc())
 
     result = db.execute(stmt)
     rows = result.all()

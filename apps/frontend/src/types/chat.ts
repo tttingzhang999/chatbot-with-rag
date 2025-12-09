@@ -17,6 +17,7 @@ export type Conversation = {
 export type ChatRequest = {
   message: string;
   conversation_id?: string;
+  profile_id?: string;
 }
 
 export type ChatResponse = {

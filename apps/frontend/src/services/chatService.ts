@@ -16,9 +16,10 @@ export const chatService = {
     return response.data;
   },
 
-  getConversations: async (): Promise<ConversationListResponse> => {
+  getConversations: async (profileId?: string): Promise<ConversationListResponse> => {
     const response = await api.get<ConversationListResponse>(
-      API_ENDPOINTS.CHAT_CONVERSATIONS
+      API_ENDPOINTS.CHAT_CONVERSATIONS,
+      { params: profileId ? { profile_id: profileId } : undefined }
     );
     return response.data;
   },
