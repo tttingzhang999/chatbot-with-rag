@@ -1,6 +1,6 @@
-# HR Chatbot with RAG
+# Chatbot with RAG
 
-An intelligent HR chatbot powered by Retrieval-Augmented Generation (RAG), featuring multi-turn conversations, document processing, and hybrid search capabilities. Built with FastAPI, React, and AWS infrastructure.
+An intelligent chatbot powered by Retrieval-Augmented Generation (RAG), featuring multi-turn conversations, document processing, and hybrid search capabilities. Built with FastAPI, React, and AWS infrastructure.
 
 ## Features
 
@@ -111,11 +111,11 @@ aws-vault exec <your-aws-profile-name> -- docker-compose up --build
 
 These variables **must** be set in your `.env` file:
 
-| Variable       | Description                               | Example                                                    |
-| -------------- | ----------------------------------------- | ---------------------------------------------------------- |
-| `SECRET_KEY`   | JWT token signing key                     | `a1b2c3d4e5f6...`                                          |
-| `DATABASE_URL` | PostgreSQL connection string              | `postgresql://postgres:password@localhost:5432/hr_chatbot` |
-| `AWS_REGION`   | AWS region for Bedrock and other services | `ap-northeast-1`                                           |
+| Variable       | Description                               | Example                                                 |
+| -------------- | ----------------------------------------- | ------------------------------------------------------- |
+| `SECRET_KEY`   | JWT token signing key                     | `a1b2c3d4e5f6...`                                       |
+| `DATABASE_URL` | PostgreSQL connection string              | `postgresql://postgres:password@localhost:5432/chatbot` |
+| `AWS_REGION`   | AWS region for Bedrock and other services | `ap-northeast-1`                                        |
 
 ### AWS Authentication
 
@@ -130,10 +130,10 @@ All optional variables have sensible defaults. See `.env.example` for the comple
 
 #### Application Settings
 
-| Variable   | Description       | Default      |
-| ---------- | ----------------- | ------------ |
-| `APP_NAME` | Application name  | `HR Chatbot` |
-| `DEBUG`    | Enable debug mode | `false`      |
+| Variable   | Description       | Default   |
+| ---------- | ----------------- | --------- |
+| `APP_NAME` | Application name  | `Chatbot` |
+| `DEBUG`    | Enable debug mode | `false`   |
 
 #### Server Configuration
 
@@ -145,11 +145,11 @@ All optional variables have sensible defaults. See `.env.example` for the comple
 
 #### API Settings
 
-| Variable       | Description          | Default          |
-| -------------- | -------------------- | ---------------- |
-| `API_TITLE`    | API title in docs    | `HR Chatbot API` |
-| `API_VERSION`  | API version          | `1.1.0`          |
-| `CORS_ORIGINS` | CORS allowed origins | `*`              |
+| Variable       | Description          | Default       |
+| -------------- | -------------------- | ------------- |
+| `API_TITLE`    | API title in docs    | `Chatbot API` |
+| `API_VERSION`  | API version          | `1.1.0`       |
+| `CORS_ORIGINS` | CORS allowed origins | `*`           |
 
 #### File Upload
 
@@ -263,7 +263,7 @@ Watch [Infrastructure README](infrastructure/terraform/README.md) for more detai
 ## Project Structure
 
 ```
-hr-chatbot/
+chatbot/
 ├── apps/
 │   ├── backend/                 # FastAPI application
 │   │   ├── src/
