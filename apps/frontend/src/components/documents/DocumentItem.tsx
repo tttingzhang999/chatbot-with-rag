@@ -1,9 +1,11 @@
-import { FileText, Trash2, Clock, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { FileText, Trash2, Clock, CheckCircle2, XCircle, Loader2, Code } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { Document } from '@/types/document';
 import { cn } from '@/lib/utils';
+import { ChunkAccordion } from './ChunkAccordion';
 
 interface DocumentItemProps {
   document: Document;
@@ -63,63 +65,91 @@ const statusConfig = {
 };
 
 export function DocumentItem({ document, onDelete, isDeleting = false }: DocumentItemProps) {
+  const [showChunks, setShowChunks] = useState(false);
   const status = statusConfig[document.status];
   const StatusIcon = status.icon;
 
+  const handleEmbedClick = () => {
+    setShowChunks(!showChunks);
+  };
+
   return (
-    <Card className="hover:bg-accent/50 transition-colors">
-      <CardContent className="p-3">
-        <div className="flex items-center gap-3">
-          {/* File icon */}
-          <div className="p-1.5 rounded-lg bg-primary/10 shrink-0">
-            <FileText className="h-4 w-4 text-primary" />
-          </div>
+    <div className="space-y-2">
+      <Card className="hover:bg-accent/50 transition-colors">
+        <CardContent className="p-3">
+          <div className="flex items-center gap-3">
+            {/* File icon */}
+            <div className="p-1.5 rounded-lg bg-primary/10 shrink-0">
+              <FileText className="h-4 w-4 text-primary" />
+            </div>
 
-          {/* File name */}
-          <div className="flex-1 min-w-0">
-            <p className="font-medium truncate text-sm">{document.file_name}</p>
-          </div>
+            {/* File name */}
+            <div className="flex-1 min-w-0">
+              <p className="font-medium truncate text-sm">{document.file_name}</p>
+            </div>
 
-          {/* Metadata */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
-            <span>{formatFileSize(document.file_size)}</span>
-            <span>•</span>
-            <span>{formatDate(document.upload_date)}</span>
-          </div>
+            {/* Metadata */}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
+              <span>{formatFileSize(document.file_size)}</span>
+              <span>•</span>
+              <span>{formatDate(document.upload_date)}</span>
+            </div>
 
-          {/* Status badge */}
-          <Badge
-            variant={status.variant}
-            className={cn('flex items-center gap-1 shrink-0 h-6')}
-          >
-            <StatusIcon className={cn('h-3 w-3', status.className)} />
-            <span className="text-xs">{status.label}</span>
-          </Badge>
+            {/* Status badge */}
+            <Badge
+              variant={status.variant}
+              className={cn('flex items-center gap-1 shrink-0 h-6')}
+            >
+              <StatusIcon className={cn('h-3 w-3', status.className)} />
+              <span className="text-xs">{status.label}</span>
+            </Badge>
 
-          {/* Delete button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onDelete?.(document.id)}
-            disabled={isDeleting}
-            className="h-7 w-7 p-0 shrink-0"
-            title="Delete document"
-          >
-            {isDeleting ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Trash2 className="h-3.5 w-3.5" />
+            {/* Embed button */}
+            {document.status === 'completed' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleEmbedClick}
+                className="h-7 w-7 p-0 shrink-0"
+                title={showChunks ? "Hide chunks" : "Show chunks"}
+              >
+                <Code className="h-3.5 w-3.5" />
+              </Button>
             )}
-          </Button>
-        </div>
 
-        {/* Error message (only shows on failed status) */}
-        {document.status === 'failed' && document.error_message && (
-          <p className="mt-2 text-xs text-destructive pl-9">
-            {document.error_message}
-          </p>
-        )}
-      </CardContent>
-    </Card>
+            {/* Delete button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDelete?.(document.id)}
+              disabled={isDeleting}
+              className="h-7 w-7 p-0 shrink-0"
+              title="Delete document"
+            >
+              {isDeleting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          </div>
+
+          {/* Error message (only shows on failed status) */}
+          {document.status === 'failed' && document.error_message && (
+            <p className="mt-2 text-xs text-destructive pl-9">
+              {document.error_message}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Chunk Accordion - shown when button clicked */}
+      {showChunks && (
+        <ChunkAccordion
+          documentId={document.id}
+          documentName={document.file_name}
+        />
+      )}
+    </div>
   );
 }

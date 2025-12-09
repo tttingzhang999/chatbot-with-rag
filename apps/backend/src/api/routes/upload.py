@@ -72,6 +72,7 @@ class DocumentListItem(BaseModel):
     file_name: str
     file_type: str
     file_size: int
+    storage_type: str
     upload_date: str
     status: str
     error_message: str | None
@@ -317,6 +318,7 @@ async def upload_local_file(
             file_path=str(file_path.absolute()),
             file_type=file_extension,
             file_size=file_size,
+            storage_type="local",
             status="pending",
         )
         db.add(document)
@@ -394,6 +396,7 @@ def get_presigned_upload_url(
             file_path="",  # Will be set after S3 upload
             file_type=file_type,
             file_size=request.file_size,
+            storage_type="cloud",
             status="pending",
         )
         db.add(document)

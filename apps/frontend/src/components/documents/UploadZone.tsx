@@ -1,12 +1,14 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, FileText, AlertCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface UploadZoneProps {
   onFilesSelected: (files: File[]) => void;
   disabled?: boolean;
+  existingFileNames?: string[];
 }
 
 const ACCEPTED_FILE_TYPES = {
@@ -18,14 +20,54 @@ const ACCEPTED_FILE_TYPES = {
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
-export function UploadZone({ onFilesSelected, disabled = false }: UploadZoneProps) {
+export function UploadZone({
+  onFilesSelected,
+  disabled = false,
+  existingFileNames = []
+}: UploadZoneProps) {
+  const [duplicateFiles, setDuplicateFiles] = useState<string[]>([]);
+
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       if (acceptedFiles.length > 0) {
-        onFilesSelected(acceptedFiles);
+        // Check for duplicate file names
+        const existingNamesSet = new Set(
+          existingFileNames.map((name) => name.toLowerCase())
+        );
+        const duplicates: File[] = [];
+        const validFiles: File[] = [];
+
+        acceptedFiles.forEach((file) => {
+          if (existingNamesSet.has(file.name.toLowerCase())) {
+            duplicates.push(file);
+          } else {
+            validFiles.push(file);
+          }
+        });
+
+        // Show warning for duplicate files
+        if (duplicates.length > 0) {
+          const duplicateNames = duplicates.map((f) => f.name);
+          setDuplicateFiles(duplicateNames);
+          toast.warning(
+            `Skipped ${duplicates.length} duplicate file(s): ${duplicateNames.join(', ')}`
+          );
+          // Clear duplicate files after 5 seconds
+          setTimeout(() => setDuplicateFiles([]), 5000);
+        } else {
+          setDuplicateFiles([]);
+        }
+
+        // Only pass valid files to the callback
+        if (validFiles.length > 0) {
+          onFilesSelected(validFiles);
+        } else if (duplicates.length > 0) {
+          // If all files are duplicates, show error
+          toast.error('All selected files already exist. Please choose different files.');
+        }
       }
     },
-    [onFilesSelected]
+    [onFilesSelected, existingFileNames]
   );
 
   const {
@@ -73,7 +115,6 @@ export function UploadZone({ onFilesSelected, disabled = false }: UploadZoneProp
               )} />
             )}
           </div>
-
           <div className="space-y-0.5">
             <p className="text-xs font-medium">
               {isDragActive
@@ -86,23 +127,32 @@ export function UploadZone({ onFilesSelected, disabled = false }: UploadZoneProp
               Supports PDF, DOCX, DOC, TXT (max 50MB per file)
             </p>
           </div>
-
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <FileText className="h-3.5 w-3.5" />
-            <span>Multiple files supported</span>
-          </div>
         </div>
       </Card>
 
       {/* Error messages */}
-      {hasErrors && (
+      {(hasErrors || duplicateFiles.length > 0) && (
         <div className="mt-3 space-y-1">
+          {/* Duplicate file errors */}
+          {duplicateFiles.map((fileName) => (
+            <div
+              key={fileName}
+              className="flex items-start gap-2 text-sm text-destructive"
+            >
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-medium">{fileName}</p>
+                <p className="text-xs mt-1">File already exists</p>
+              </div>
+            </div>
+          ))}
+          {/* File rejection errors */}
           {fileRejections.map(({ file, errors }) => (
             <div
               key={file.name}
               className="flex items-start gap-2 text-sm text-destructive"
             >
-              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
               <div>
                 <p className="font-medium">{file.name}</p>
                 <ul className="text-xs space-y-0.5 mt-1">

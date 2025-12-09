@@ -689,6 +689,7 @@ def get_user_documents(db: Session, user_id: UUID) -> list[dict[str, Any]]:
             Document.file_name,
             Document.file_type,
             Document.file_size,
+            Document.storage_type,
             Document.upload_date,
             Document.status,
             Document.error_message,
@@ -701,6 +702,7 @@ def get_user_documents(db: Session, user_id: UUID) -> list[dict[str, Any]]:
             Document.file_name,
             Document.file_type,
             Document.file_size,
+            Document.storage_type,
             Document.upload_date,
             Document.status,
             Document.error_message,
@@ -719,6 +721,7 @@ def get_user_documents(db: Session, user_id: UUID) -> list[dict[str, Any]]:
                 "file_name": row.file_name,
                 "file_type": row.file_type,
                 "file_size": row.file_size,
+                "storage_type": row.storage_type,
                 "upload_date": row.upload_date.isoformat(),
                 "status": row.status,
                 "error_message": row.error_message,
@@ -753,13 +756,26 @@ def delete_document(db: Session, document_id: UUID, user_id: UUID) -> bool:
         if not document:
             return False
 
-        # Delete associated file if it exists
-        if document.file_path and os.path.exists(document.file_path):
+        # Delete file based on storage type
+        if document.storage_type == "cloud":
+            # Delete from S3
             try:
-                os.remove(document.file_path)
-                logger.info(f"Deleted file: {document.file_path}")
+                from src.services.s3_service import S3Service
+
+                s3_service = S3Service()
+                success = s3_service.delete_file(document.file_path)
+                if not success:
+                    logger.warning(f"Failed to delete S3 file: {document.file_path}")
             except Exception as e:
-                logger.warning(f"Failed to delete file {document.file_path}: {e}")
+                logger.warning(f"Error deleting S3 file {document.file_path}: {e}")
+        else:  # local
+            # Delete local file
+            if document.file_path and os.path.exists(document.file_path):
+                try:
+                    os.remove(document.file_path)
+                    logger.info(f"Deleted local file: {document.file_path}")
+                except Exception as e:
+                    logger.warning(f"Failed to delete local file {document.file_path}: {e}")
 
         # Delete document (cascades to chunks)
         stmt = delete(Document).where(Document.id == document_id)

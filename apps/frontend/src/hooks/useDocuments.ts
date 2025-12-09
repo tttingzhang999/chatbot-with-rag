@@ -144,10 +144,39 @@ export function useDeleteDocument() {
  */
 export function useUploadMultipleDocuments() {
   const { mutateAsync: uploadDocument } = useUploadDocument();
+  const { documents } = useDocuments();
   const [uploadProgress, setUploadProgress] = useState<Record<string, UploadProgress>>({});
 
   const uploadMultiple = async (files: File[]) => {
-    const uploads = files.map((file) => {
+    // Check for duplicate file names
+    const existingFileNames = new Set(documents.map((doc) => doc.file_name.toLowerCase()));
+    const duplicateFiles: string[] = [];
+    const filesToUpload = files.filter((file) => {
+      const fileName = file.name.toLowerCase();
+      if (existingFileNames.has(fileName)) {
+        duplicateFiles.push(file.name);
+        return false;
+      }
+      return true;
+    });
+
+    // Show warning if there are duplicate files
+    if (duplicateFiles.length > 0) {
+      toast.warning(
+        `Skipped ${duplicateFiles.length} duplicate file(s): ${duplicateFiles.join(', ')}`
+      );
+    }
+
+    // If no files to upload after filtering, return early
+    if (filesToUpload.length === 0) {
+      return files.map((file) => ({
+        success: false,
+        error: 'File already exists',
+        filename: file.name,
+      }));
+    }
+
+    const uploads = filesToUpload.map((file) => {
       const tempId = `temp-${Date.now()}-${file.name}`;
 
       setUploadProgress((prev) => ({

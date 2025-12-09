@@ -29,9 +29,10 @@ class Document(Base):
         nullable=False,
     )
     file_name = Column(String(255), nullable=False)
-    file_path = Column(String(512), nullable=False)  # S3 path
+    file_path = Column(String(512), nullable=False)  # S3 path or local path
     file_type = Column(String(50), nullable=False)  # pdf, docx, txt, etc.
     file_size = Column(Integer)  # bytes
+    storage_type = Column(String(10), nullable=False)  # 'local' or 'cloud'
     upload_date = Column(DateTime, default=datetime.utcnow, nullable=False)
     status = Column(
         String(20),

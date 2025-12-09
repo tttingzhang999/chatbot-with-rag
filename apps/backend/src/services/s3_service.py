@@ -87,6 +87,42 @@ class S3Service:
             logger.error(f"Failed to generate pre-signed URL for {s3_key}: {e}")
             raise
 
+    def delete_file(self, s3_uri: str) -> bool:
+        """
+        Delete file from S3 given s3://bucket/key URI.
+
+        Args:
+            s3_uri: S3 URI in format s3://bucket/key
+
+        Returns:
+            bool: True if deletion successful, False otherwise
+
+        Raises:
+            ValueError: If s3_uri format is invalid
+        """
+        try:
+            if not s3_uri.startswith("s3://"):
+                raise ValueError(f"Invalid S3 URI: {s3_uri}")
+
+            # Parse s3://bucket/key
+            parts = s3_uri[5:].split("/", 1)
+            bucket = parts[0]
+            key = parts[1] if len(parts) > 1 else ""
+
+            if not key:
+                raise ValueError(f"No key found in S3 URI: {s3_uri}")
+
+            self.s3_client.delete_object(Bucket=bucket, Key=key)
+            logger.info(f"Deleted S3 file: {s3_uri}")
+            return True
+
+        except ClientError as e:
+            logger.error(f"Failed to delete S3 file {s3_uri}: {str(e)}")
+            return False
+        except Exception as e:
+            logger.error(f"Error deleting S3 file {s3_uri}: {str(e)}")
+            return False
+
     def _get_content_type(self, file_type: str) -> str:
         """
         Get MIME type for file extension.
