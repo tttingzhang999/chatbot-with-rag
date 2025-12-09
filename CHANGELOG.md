@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] 2025-12-09 - Prompt Profiles & Profile-Aware Retrieval
+
+### Added
+
+- **Prompt profiles (backend):**
+  - New `prompt_profiles` model, Alembic migration, and full CRUD API routes (`/profiles`) with schemas/services for managing user-specific RAG settings.
+  - Profile-aware chat/upload endpoints accept an optional `profile_id`, letting users run conversations and uploads with selected prompt context.
+- **Profile-aware retrieval:**
+  - Conversation and document retrieval APIs support optional profile filtering for personalized context lookup.
+- **Prompt management UI (frontend):**
+  - Added `PromptsPage` with profile list, creation/edit dialog, and client store/services for managing profiles.
+  - Integrated profile selection into chat and document flows (hooks, services, upload zone, pages) so users can choose a profile per interaction.
+- **UI components:**
+  - Introduced reusable `Select` and `Tabs` components to support profile selection and navigation in the new prompts experience.
+
+### Changed
+
+- **Chat & document services:**
+  - Backend chat/retrieval/document services now route requests with optional `profile_id` to ensure profile-specific responses.
+  - Frontend chat/document hooks and pages updated to pass profile context and display profile-aware data.
+- **Navigation & layout:**
+  - Navbar and related components updated to surface the prompts management entry point and improved profile controls.
+
 ## [1.1.1] 2025-12-08 - LICENSE, Terraform S3, Docs/Infra Structure
 
 ### Added
