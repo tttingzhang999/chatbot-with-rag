@@ -8,6 +8,13 @@ import type {
 } from '@/types/profile';
 import { profileService } from '@/services/profileService';
 
+// Import queryClient to invalidate queries
+let queryClientInstance: any = null;
+
+export function setQueryClient(queryClient: any) {
+  queryClientInstance = queryClient;
+}
+
 interface ProfileState {
   profiles: ProfileSummary[];
   currentProfile: PromptProfile | null;
@@ -62,6 +69,12 @@ export const useProfileStore = create<ProfileState>()(
         try {
           const profile = await profileService.getProfileById(profileId);
           set({ currentProfile: profile, isLoading: false });
+
+          // Invalidate queries to trigger refetch with new profile filter
+          if (queryClientInstance) {
+            queryClientInstance.invalidateQueries({ queryKey: ['conversations'] });
+            queryClientInstance.invalidateQueries({ queryKey: ['documents'] });
+          }
         } catch (error: any) {
           const errorMessage = error.response?.data?.detail || 'Failed to set current profile';
           set({ error: errorMessage, isLoading: false });

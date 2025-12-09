@@ -33,6 +33,14 @@ export const ChatPage = () => {
     }
   }, [activeConversationId, refetchHistory]);
 
+  // Clear conversation state when profile changes
+  useEffect(() => {
+    if (currentProfile?.id) {
+      setActiveConversation(null);
+      clearMessages();
+    }
+  }, [currentProfile?.id, setActiveConversation, clearMessages]);
+
   const handleSendMessage = (message: string) => {
     if (!message.trim()) return;
 
@@ -78,7 +86,7 @@ export const ChatPage = () => {
         <div className="flex-1 overflow-hidden">
           <MessageList messages={messages} isLoading={chatLoading} />
         </div>
-        <div className="flex-shrink-0">
+        <div className="shrink-0">
           <ChatInput onSendMessage={handleSendMessage} disabled={chatLoading} />
         </div>
       </div>

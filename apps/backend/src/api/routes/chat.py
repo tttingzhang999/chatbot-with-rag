@@ -5,7 +5,7 @@ Chat routes for conversation management and messaging.
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
 from src.api.deps import CurrentUser, DBSession
@@ -163,18 +163,29 @@ def send_message(
 def get_conversations(
     db: DBSession,
     current_user: CurrentUser,
+    profile_id: str | None = Query(None, description="Filter by profile ID"),
 ) -> ConversationListResponse:
     """
-    Get all conversations for current user.
+    Get all conversations for current user, optionally filtered by profile.
 
     Args:
         db: Database session
         current_user: Current user ID
+        profile_id: Optional profile ID to filter conversations
 
     Returns:
         ConversationListResponse: Response with list of conversations
     """
-    conversations = chat_service.get_user_conversations(db=db, user_id=current_user.id)
+    # If profile_id not provided, use default profile
+    if not profile_id:
+        default_profile = profile_service.get_default_profile(db=db, user_id=current_user.id)
+        profile_uuid = default_profile.id
+    else:
+        profile_uuid = uuid.UUID(profile_id)
+
+    conversations = chat_service.get_user_conversations(
+        db=db, user_id=current_user.id, profile_id=profile_uuid
+    )
 
     conversation_items = [
         ConversationListItem(

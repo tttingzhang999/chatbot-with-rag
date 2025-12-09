@@ -22,6 +22,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useProfileStore } from '@/stores/profileStore';
 import type { PromptProfile, ProfileCreateRequest, ProfileUpdateRequest } from '@/types/profile';
 import { toast } from 'sonner';
@@ -44,6 +51,12 @@ Context from documents:
 
 Based on the above context and your knowledge, provide clear and accurate answers to the user's questions. If the context is relevant, cite it in your response. If the context doesn't contain relevant information, rely on your general knowledge.`;
 
+const LLM_MODEL_OPTIONS = [
+  { value: 'amazon.nova-lite-v1:0', label: 'Amazon Nova Lite v1' },
+  { value: 'anthropic.claude-3-5-sonnet-20240620-v1:0', label: 'Claude 3.5 Sonnet' },
+  { value: 'anthropic.claude-3-haiku-20240307-v1:0', label: 'Claude 3 Haiku' },
+] as const;
+
 export function ProfileDialog({ open, onOpenChange, profile, onSuccess }: ProfileDialogProps) {
   const { createProfile, updateProfile, isLoading } = useProfileStore();
   const isEditMode = !!profile;
@@ -59,7 +72,7 @@ export function ProfileDialog({ open, onOpenChange, profile, onSuccess }: Profil
       top_k_chunks: 5,
       semantic_search_ratio: 0.5,
       relevance_threshold: 0.5,
-      llm_model_id: 'anthropic.claude-sonnet-4-20250514',
+      llm_model_id: 'amazon.nova-lite-v1:0',
       llm_temperature: 0.7,
       llm_top_p: 0.9,
       llm_max_tokens: 2048,
@@ -94,7 +107,7 @@ export function ProfileDialog({ open, onOpenChange, profile, onSuccess }: Profil
         top_k_chunks: 5,
         semantic_search_ratio: 0.5,
         relevance_threshold: 0.5,
-        llm_model_id: 'anthropic.claude-sonnet-4-20250514',
+        llm_model_id: 'amazon.nova-lite-v1:0',
         llm_temperature: 0.7,
         llm_top_p: 0.9,
         llm_max_tokens: 2048,
@@ -379,15 +392,26 @@ export function ProfileDialog({ open, onOpenChange, profile, onSuccess }: Profil
                 <FormField
                   control={form.control}
                   name="llm_model_id"
-                  rules={{ required: 'LLM model ID is required' }}
+                  rules={{ required: 'LLM model is required' }}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Model ID</FormLabel>
-                      <FormControl>
-                        <Input placeholder="anthropic.claude-sonnet-4-20250514" {...field} />
-                      </FormControl>
+                      <FormLabel>LLM Model</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a model" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {LLM_MODEL_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormDescription>
-                        Bedrock model ID (e.g., anthropic.claude-sonnet-4-20250514)
+                        Select the LLM model to use for chat responses
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

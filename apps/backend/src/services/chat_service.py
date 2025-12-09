@@ -302,14 +302,16 @@ def get_conversation_history(
 def get_user_conversations(
     db: Session,
     user_id: uuid.UUID,
+    profile_id: uuid.UUID | None = None,
     limit: int | None = None,
 ) -> list[tuple[Conversation, int]]:
     """
-    Get all conversations for a user with message counts.
+    Get all conversations for a user with message counts, optionally filtered by profile.
 
     Args:
         db: Database session
         user_id: User ID
+        profile_id: Optional profile ID to filter conversations
         limit: Maximum number of conversations to retrieve (defaults to config setting)
 
     Returns:
@@ -329,17 +331,20 @@ def get_user_conversations(
     )
 
     # Join conversations with message counts
-    results = (
+    query = (
         db.query(Conversation, func.coalesce(message_count_subquery.c.message_count, 0))
         .outerjoin(
             message_count_subquery,
             Conversation.id == message_count_subquery.c.conversation_id,
         )
         .filter(Conversation.user_id == user_id)
-        .order_by(Conversation.updated_at.desc())
-        .limit(limit)
-        .all()
     )
+
+    # Add profile filtering when profile_id provided
+    if profile_id:
+        query = query.filter(Conversation.profile_id == profile_id)
+
+    results = query.order_by(Conversation.updated_at.desc()).limit(limit).all()
 
     return results
 

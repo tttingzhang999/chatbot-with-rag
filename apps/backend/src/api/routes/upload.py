@@ -14,7 +14,7 @@ import shutil
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, Field
 
 from src.api.deps import CurrentUser, DBSession
@@ -567,19 +567,28 @@ def trigger_document_processing(
 def list_documents(
     current_user: CurrentUser = None,
     db: DBSession = None,
+    profile_id: str | None = Query(None, description="Filter by profile ID"),
 ) -> DocumentListResponse:
     """
-    Get all documents uploaded by current user.
+    Get all documents uploaded by current user, optionally filtered by profile.
 
     Args:
         current_user: Current authenticated user
         db: Database session
+        profile_id: Optional profile ID to filter documents
 
     Returns:
         DocumentListResponse: List of documents
     """
     try:
-        documents = get_user_documents(db, current_user.id)
+        # If profile_id not provided, use default profile
+        if not profile_id:
+            default_profile = profile_service.get_default_profile(db=db, user_id=current_user.id)
+            profile_uuid = default_profile.id
+        else:
+            profile_uuid = uuid.UUID(profile_id)
+
+        documents = get_user_documents(db, current_user.id, profile_uuid)
 
         return DocumentListResponse(
             documents=[DocumentListItem(**doc) for doc in documents],

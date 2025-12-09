@@ -102,7 +102,7 @@ export function UploadZone({ onFilesSelected, disabled = false }: UploadZoneProp
               key={file.name}
               className="flex items-start gap-2 text-sm text-destructive"
             >
-              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
               <div>
                 <p className="font-medium">{file.name}</p>
                 <ul className="text-xs space-y-0.5 mt-1">

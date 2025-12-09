@@ -65,7 +65,25 @@ def get_default_profile(
     """
     profile = profile_service.get_default_profile(db=db, user_id=current_user.id)
 
-    return ProfileDetailResponse.from_orm(profile)
+    return ProfileDetailResponse(
+        id=str(profile.id),
+        name=profile.name,
+        description=profile.description,
+        is_default=profile.is_default,
+        created_at=profile.created_at,
+        updated_at=profile.updated_at,
+        system_prompt=profile.system_prompt,
+        rag_system_prompt_template=profile.rag_system_prompt_template,
+        chunk_size=profile.chunk_size,
+        chunk_overlap=profile.chunk_overlap,
+        top_k_chunks=profile.top_k_chunks,
+        semantic_search_ratio=profile.semantic_search_ratio,
+        relevance_threshold=profile.relevance_threshold,
+        llm_model_id=profile.llm_model_id,
+        llm_temperature=profile.llm_temperature,
+        llm_top_p=profile.llm_top_p,
+        llm_max_tokens=profile.llm_max_tokens,
+    )
 
 
 @router.get("/{profile_id}", response_model=ProfileDetailResponse)
@@ -102,7 +120,25 @@ def get_profile(
             detail="Profile not found",
         )
 
-    return ProfileDetailResponse.from_orm(profile)
+    return ProfileDetailResponse(
+        id=str(profile.id),
+        name=profile.name,
+        description=profile.description,
+        is_default=profile.is_default,
+        created_at=profile.created_at,
+        updated_at=profile.updated_at,
+        system_prompt=profile.system_prompt,
+        rag_system_prompt_template=profile.rag_system_prompt_template,
+        chunk_size=profile.chunk_size,
+        chunk_overlap=profile.chunk_overlap,
+        top_k_chunks=profile.top_k_chunks,
+        semantic_search_ratio=profile.semantic_search_ratio,
+        relevance_threshold=profile.relevance_threshold,
+        llm_model_id=profile.llm_model_id,
+        llm_temperature=profile.llm_temperature,
+        llm_top_p=profile.llm_top_p,
+        llm_max_tokens=profile.llm_max_tokens,
+    )
 
 
 @router.post("", response_model=ProfileDetailResponse, status_code=status.HTTP_201_CREATED)
@@ -143,7 +179,25 @@ def create_profile(
         llm_max_tokens=request.llm_max_tokens,
     )
 
-    return ProfileDetailResponse.from_orm(profile)
+    return ProfileDetailResponse(
+        id=str(profile.id),
+        name=profile.name,
+        description=profile.description,
+        is_default=profile.is_default,
+        created_at=profile.created_at,
+        updated_at=profile.updated_at,
+        system_prompt=profile.system_prompt,
+        rag_system_prompt_template=profile.rag_system_prompt_template,
+        chunk_size=profile.chunk_size,
+        chunk_overlap=profile.chunk_overlap,
+        top_k_chunks=profile.top_k_chunks,
+        semantic_search_ratio=profile.semantic_search_ratio,
+        relevance_threshold=profile.relevance_threshold,
+        llm_model_id=profile.llm_model_id,
+        llm_temperature=profile.llm_temperature,
+        llm_top_p=profile.llm_top_p,
+        llm_max_tokens=profile.llm_max_tokens,
+    )
 
 
 @router.put("/{profile_id}", response_model=ProfileDetailResponse)
@@ -187,7 +241,25 @@ def update_profile(
         llm_max_tokens=request.llm_max_tokens,
     )
 
-    return ProfileDetailResponse.from_orm(profile)
+    return ProfileDetailResponse(
+        id=str(profile.id),
+        name=profile.name,
+        description=profile.description,
+        is_default=profile.is_default,
+        created_at=profile.created_at,
+        updated_at=profile.updated_at,
+        system_prompt=profile.system_prompt,
+        rag_system_prompt_template=profile.rag_system_prompt_template,
+        chunk_size=profile.chunk_size,
+        chunk_overlap=profile.chunk_overlap,
+        top_k_chunks=profile.top_k_chunks,
+        semantic_search_ratio=profile.semantic_search_ratio,
+        relevance_threshold=profile.relevance_threshold,
+        llm_model_id=profile.llm_model_id,
+        llm_temperature=profile.llm_temperature,
+        llm_top_p=profile.llm_top_p,
+        llm_max_tokens=profile.llm_max_tokens,
+    )
 
 
 @router.delete("/{profile_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -12,6 +12,7 @@ import { DocumentsPage } from './pages/DocumentsPage'
 import { PromptsPage } from './pages/PromptsPage'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { MainLayout } from './layouts/MainLayout'
+import { setQueryClient } from './stores/profileStore'
 
 // Create a React Query client
 const queryClient = new QueryClient({
@@ -22,6 +23,9 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+// Set queryClient in profileStore for query invalidation
+setQueryClient(queryClient)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
