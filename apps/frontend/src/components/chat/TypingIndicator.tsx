@@ -1,7 +1,7 @@
 export const TypingIndicator = () => {
   return (
     <div className="flex items-start gap-3 mb-4">
-      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+      <div className="shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
         <span className="text-sm font-medium">AI</span>
       </div>
       <div className="flex-1">

@@ -14,12 +14,13 @@ import shutil
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, Field
 
 from src.api.deps import CurrentUser, DBSession
 from src.core.config import settings
 from src.models.document import Document
+from src.services import profile_service
 from src.services.document_service import DocumentProcessor, delete_document, get_user_documents
 from src.services.s3_service import get_s3_service
 
@@ -39,6 +40,7 @@ class PresignedUrlRequest(BaseModel):
     file_size: int = Field(
         ..., ge=1, le=50 * 1024 * 1024, description="File size in bytes (max 50MB)"
     )
+    profile_id: str | None = Field(None, description="Profile ID (uses default if not provided)")
 
 
 class PresignedUrlResponse(BaseModel):
@@ -251,10 +253,11 @@ def get_upload_config() -> ConfigResponse:
 
 @router.post("/local", response_model=LocalUploadResponse)
 async def upload_local_file(
+    current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
+    db: DBSession,
     file: UploadFile = File(...),
-    current_user: CurrentUser = None,
-    background_tasks: BackgroundTasks = None,
-    db: DBSession = None,
+    profile_id: str | None = Form(None),
 ) -> LocalUploadResponse:
     """
     Upload file to local storage and trigger processing.
@@ -264,6 +267,7 @@ async def upload_local_file(
 
     Args:
         file: Uploaded file
+        profile_id: Optional profile ID (uses default if not provided)
         current_user: Current authenticated user
         background_tasks: FastAPI background tasks
         db: Database session
@@ -272,6 +276,21 @@ async def upload_local_file(
         LocalUploadResponse: Upload status and document ID
     """
     try:
+        # Get profile: use specified profile_id or default profile
+        if profile_id:
+            profile = profile_service.get_profile_by_id(
+                db=db,
+                profile_id=uuid.UUID(profile_id),
+                user_id=current_user.id,
+            )
+            if not profile:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Profile not found",
+                )
+        else:
+            profile = profile_service.get_default_profile(db=db, user_id=current_user.id)
+
         # Validate file type
         if not file.filename:
             raise HTTPException(
@@ -314,6 +333,7 @@ async def upload_local_file(
         document = Document(
             id=document_id,
             user_id=current_user.id,
+            profile_id=profile.id,
             file_name=file.filename,
             file_path=str(file_path.absolute()),
             file_type=file_extension,
@@ -357,8 +377,8 @@ async def upload_local_file(
 @router.post("/presigned-url", response_model=PresignedUrlResponse)
 def get_presigned_upload_url(
     request: PresignedUrlRequest,
-    current_user: CurrentUser = None,
-    db: DBSession = None,
+    current_user: CurrentUser,
+    db: DBSession,
 ) -> PresignedUrlResponse:
     """
     Generate pre-signed S3 URL for direct client-to-S3 upload.
@@ -378,6 +398,21 @@ def get_presigned_upload_url(
         PresignedUrlResponse: Pre-signed URL and upload details
     """
     try:
+        # Get profile: use specified profile_id or default profile
+        if request.profile_id:
+            profile = profile_service.get_profile_by_id(
+                db=db,
+                profile_id=uuid.UUID(request.profile_id),
+                user_id=current_user.id,
+            )
+            if not profile:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Profile not found",
+                )
+        else:
+            profile = profile_service.get_default_profile(db=db, user_id=current_user.id)
+
         # Validate file type
         file_type = request.file_type.lower().lstrip(".")
         if file_type not in settings.SUPPORTED_FILE_TYPES:
@@ -392,6 +427,7 @@ def get_presigned_upload_url(
         document = Document(
             id=document_id,
             user_id=current_user.id,
+            profile_id=profile.id,
             file_name=request.filename,
             file_path="",  # Will be set after S3 upload
             file_type=file_type,
@@ -443,8 +479,8 @@ def get_presigned_upload_url(
 def trigger_document_processing(
     request: ProcessDocumentRequest,
     background_tasks: BackgroundTasks,
-    current_user: CurrentUser = None,
-    db: DBSession = None,
+    current_user: CurrentUser,
+    db: DBSession,
 ) -> ProcessDocumentResponse:
     """
     Trigger document processing after S3 upload completes.
@@ -532,21 +568,30 @@ def trigger_document_processing(
 
 @router.get("/documents", response_model=DocumentListResponse)
 def list_documents(
-    current_user: CurrentUser = None,
-    db: DBSession = None,
+    current_user: CurrentUser,
+    db: DBSession,
+    profile_id: str | None = Query(None, description="Filter by profile ID"),
 ) -> DocumentListResponse:
     """
-    Get all documents uploaded by current user.
+    Get all documents uploaded by current user, optionally filtered by profile.
 
     Args:
         current_user: Current authenticated user
         db: Database session
+        profile_id: Optional profile ID to filter documents
 
     Returns:
         DocumentListResponse: List of documents
     """
     try:
-        documents = get_user_documents(db, current_user.id)
+        # If profile_id not provided, use default profile
+        if not profile_id:
+            default_profile = profile_service.get_default_profile(db=db, user_id=current_user.id)
+            profile_uuid = default_profile.id
+        else:
+            profile_uuid = uuid.UUID(profile_id)
+
+        documents = get_user_documents(db, current_user.id, profile_uuid)
 
         return DocumentListResponse(
             documents=[DocumentListItem(**doc) for doc in documents],
@@ -564,8 +609,8 @@ def list_documents(
 @router.delete("/documents/{document_id}", response_model=DeleteResponse)
 def delete_document_endpoint(
     document_id: str,
-    current_user: CurrentUser = None,
-    db: DBSession = None,
+    current_user: CurrentUser,
+    db: DBSession,
 ) -> DeleteResponse:
     """
     Delete a document and all its chunks.

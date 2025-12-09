@@ -23,8 +23,22 @@ logger = logging.getLogger(__name__)
 class BedrockClient:
     """Client for interacting with Amazon Bedrock services."""
 
-    def __init__(self):
-        """Initialize Bedrock client with AWS credentials via boto3 default credential chain."""
+    def __init__(
+        self,
+        model_id: str | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        max_tokens: int | None = None,
+    ):
+        """
+        Initialize Bedrock client with AWS credentials and optional custom LLM settings.
+
+        Args:
+            model_id: Optional custom model ID (defaults to config settings)
+            temperature: Optional custom temperature (defaults to config settings)
+            top_p: Optional custom top_p (defaults to config settings)
+            max_tokens: Optional custom max_tokens (defaults to config settings)
+        """
         logger.info("Initializing Bedrock client with AWS credentials")
 
         # Initialize boto3 session
@@ -49,16 +63,17 @@ class BedrockClient:
             config=retry_config,
         )
 
-        # Store base model kwargs
+        # Use custom settings or defaults from config
+        conversation_model_id = model_id or settings.CONVERSATION_LLM_MODEL_ID
         self.base_model_kwargs = {
-            "temperature": settings.LLM_TEMPERATURE,
-            "top_p": settings.LLM_TOP_P,
-            "max_tokens": settings.LLM_MAX_TOKENS,
+            "temperature": temperature if temperature is not None else settings.LLM_TEMPERATURE,
+            "top_p": top_p if top_p is not None else settings.LLM_TOP_P,
+            "max_tokens": max_tokens if max_tokens is not None else settings.LLM_MAX_TOKENS,
         }
 
         # Initialize ChatBedrock instances for different use cases
         self.conversation_llm = ChatBedrock(
-            model_id=settings.CONVERSATION_LLM_MODEL_ID,
+            model_id=conversation_model_id,
             client=self.bedrock_runtime,
             model_kwargs=self.base_model_kwargs,
         )
@@ -71,10 +86,11 @@ class BedrockClient:
 
         logger.info(
             f"BedrockClient initialized with "
-            f"Conversation LLM: {settings.CONVERSATION_LLM_MODEL_ID}, "
+            f"Conversation LLM: {conversation_model_id}, "
             f"Title LLM: {settings.TITLE_LLM_MODEL_ID}, "
             f"Embedding: {settings.EMBEDDING_MODEL_ID}, "
-            f"region: {settings.AWS_REGION}"
+            f"region: {settings.AWS_REGION}, "
+            f"model_kwargs: {self.base_model_kwargs}"
         )
 
     def invoke_llm(

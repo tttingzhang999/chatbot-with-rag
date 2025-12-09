@@ -34,4 +34,17 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_column('documents', 'storage_type')
+    # Check if column exists before dropping (handles case where column was never added)
+    conn = op.get_bind()
+    result = conn.execute(sa.text("""
+        SELECT EXISTS (
+            SELECT 1 
+            FROM information_schema.columns 
+            WHERE table_name = 'documents' 
+            AND column_name = 'storage_type'
+        )
+    """))
+    column_exists = result.scalar()
+    
+    if column_exists:
+        op.drop_column('documents', 'storage_type')

@@ -3,13 +3,16 @@ import { RefreshCw } from 'lucide-react';
 import { UploadZone } from '@/components/documents/UploadZone';
 import { DocumentList } from '@/components/documents/DocumentList';
 import { useUploadMultipleDocuments, useDocuments } from '@/hooks/useDocuments';
+import { useProfileStore } from '@/stores/profileStore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export function DocumentsPage() {
-  const { uploadMultiple } = useUploadMultipleDocuments();
-  const { documents, refetch, isRefetching } = useDocuments();
+  const { currentProfile } = useProfileStore();
+  const { uploadMultiple } = useUploadMultipleDocuments(currentProfile?.id);
+  const { documents, refetch, isRefetching } = useDocuments(currentProfile?.id);
   const [isUploading, setIsUploading] = useState(false);
 
   // Get existing file names for duplicate checking
@@ -76,9 +79,9 @@ export function DocumentsPage() {
             </div>
           </CardHeader>
           <CardContent className="flex-1 min-h-0 p-0">
-            <div className="h-full px-6 overflow-auto">
-              <DocumentList />
-            </div>
+            <ScrollArea className="h-full px-6">
+              <DocumentList profileId={currentProfile?.id} />
+            </ScrollArea>
           </CardContent>
         </Card>
       </div>

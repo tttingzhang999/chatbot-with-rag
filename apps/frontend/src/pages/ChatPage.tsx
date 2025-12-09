@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useChatStore } from '@/stores/chatStore';
+import { useProfileStore } from '@/stores/profileStore';
 import { useConversations, useSendMessage, useConversationHistory } from '@/hooks/useChat';
 import { MessageList } from '@/components/chat/MessageList';
 import { ChatInput } from '@/components/chat/ChatInput';
@@ -14,8 +15,9 @@ export const ChatPage = () => {
     clearMessages,
     isLoading: chatLoading,
   } = useChatStore();
+  const { currentProfile } = useProfileStore();
 
-  const { data: conversationsData, isLoading: conversationsLoading, refetch: refetchConversations } = useConversations();
+  const { data: conversationsData, isLoading: conversationsLoading, refetch: refetchConversations } = useConversations(currentProfile?.id);
   const { mutate: sendMessage } = useSendMessage();
   const { refetch: refetchHistory } = useConversationHistory(activeConversationId);
 
@@ -31,12 +33,21 @@ export const ChatPage = () => {
     }
   }, [activeConversationId, refetchHistory]);
 
+  // Clear conversation state when profile changes
+  useEffect(() => {
+    if (currentProfile?.id) {
+      setActiveConversation(null);
+      clearMessages();
+    }
+  }, [currentProfile?.id, setActiveConversation, clearMessages]);
+
   const handleSendMessage = (message: string) => {
     if (!message.trim()) return;
 
     sendMessage({
       message,
       conversation_id: activeConversationId || undefined,
+      profile_id: currentProfile?.id,
     });
   };
 
@@ -75,7 +86,7 @@ export const ChatPage = () => {
         <div className="flex-1 overflow-hidden">
           <MessageList messages={messages} isLoading={chatLoading} />
         </div>
-        <div className="flex-shrink-0">
+        <div className="shrink-0">
           <ChatInput onSendMessage={handleSendMessage} disabled={chatLoading} />
         </div>
       </div>

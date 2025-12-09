@@ -20,4 +20,10 @@ export const API_ENDPOINTS = {
   EMBED_RE_EMBED_CHUNK: (chunkId: string) => `/embeds/chunks/${chunkId}/re-embed`,
   EMBED_RE_EMBED_ALL: (documentId: string) => `/embeds/documents/${documentId}/re-embed-all`,
   EMBED_CONFIG: '/embeds/config',
+
+  // Profiles
+  PROFILES: '/profiles',
+  PROFILES_DEFAULT: '/profiles/default',
+  PROFILE_BY_ID: (id: string) => `/profiles/${id}`,
+  PROFILE_SET_DEFAULT: (id: string) => `/profiles/${id}/set-default`,
 } as const;

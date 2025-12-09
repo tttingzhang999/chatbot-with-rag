@@ -5,12 +5,12 @@ Chat routes for conversation management and messaging.
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
 from src.api.deps import CurrentUser, DBSession
 from src.models import MessageRole
-from src.services import chat_service
+from src.services import chat_service, profile_service
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -20,6 +20,7 @@ class ChatRequest(BaseModel):
 
     message: str
     conversation_id: str | None = None
+    profile_id: str | None = None  # Optional profile ID, uses default if not provided
 
 
 class MessageResponse(BaseModel):
@@ -71,17 +72,35 @@ def send_message(
     Send a message and get response.
 
     Args:
-        request: Chat request with message and optional conversation_id
+        request: Chat request with message, optional conversation_id, and optional profile_id
         db: Database session
         current_user: Current user ID
 
     Returns:
         ChatResponse: Response with conversation ID and messages
     """
+    # Get profile: use specified profile_id or default profile
+    if request.profile_id:
+        profile = profile_service.get_profile_by_id(
+            db=db,
+            profile_id=uuid.UUID(request.profile_id),
+            user_id=current_user.id,
+        )
+        if not profile:
+            from fastapi import HTTPException, status
+
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Profile not found",
+            )
+    else:
+        profile = profile_service.get_default_profile(db=db, user_id=current_user.id)
+
     # Get or create conversation
     conversation = chat_service.get_or_create_conversation(
         db=db,
         user_id=current_user.id,
+        profile_id=profile.id,
         conversation_id=request.conversation_id,
     )
 
@@ -103,10 +122,11 @@ def send_message(
         content=request.message,
     )
 
-    # Generate response with RAG
+    # Generate response with profile settings
     assistant_content, retrieved_chunks = chat_service.generate_response(
         user_message=request.message,
         conversation_history=history,
+        profile=profile,
         db=db,
         user_id=current_user.id,
     )
@@ -143,18 +163,29 @@ def send_message(
 def get_conversations(
     db: DBSession,
     current_user: CurrentUser,
+    profile_id: str | None = Query(None, description="Filter by profile ID"),
 ) -> ConversationListResponse:
     """
-    Get all conversations for current user.
+    Get all conversations for current user, optionally filtered by profile.
 
     Args:
         db: Database session
         current_user: Current user ID
+        profile_id: Optional profile ID to filter conversations
 
     Returns:
         ConversationListResponse: Response with list of conversations
     """
-    conversations = chat_service.get_user_conversations(db=db, user_id=current_user.id)
+    # If profile_id not provided, use default profile
+    if not profile_id:
+        default_profile = profile_service.get_default_profile(db=db, user_id=current_user.id)
+        profile_uuid = default_profile.id
+    else:
+        profile_uuid = uuid.UUID(profile_id)
+
+    conversations = chat_service.get_user_conversations(
+        db=db, user_id=current_user.id, profile_id=profile_uuid
+    )
 
     conversation_items = [
         ConversationListItem(

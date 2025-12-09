@@ -9,8 +9,10 @@ import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ChatPage } from './pages/ChatPage'
 import { DocumentsPage } from './pages/DocumentsPage'
+import { PromptsPage } from './pages/PromptsPage'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { MainLayout } from './layouts/MainLayout'
+import { setQueryClient } from './stores/profileStore'
 
 // Create a React Query client
 const queryClient = new QueryClient({
@@ -21,6 +23,9 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+// Set queryClient in profileStore for query invalidation
+setQueryClient(queryClient)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -34,6 +39,7 @@ createRoot(document.getElementById('root')!).render(
               <Route element={<MainLayout />}>
                 <Route path="/" element={<ChatPage />} />
                 <Route path="/documents" element={<DocumentsPage />} />
+                <Route path="/prompts" element={<PromptsPage />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
