@@ -36,9 +36,13 @@ export async function getUploadConfig(): Promise<UploadConfig> {
  * Step 1: Request pre-signed URL for S3 upload (S3 mode only)
  */
 export async function requestPresignedUrl(
-  data: PresignedUrlRequest
+  data: PresignedUrlRequest,
+  profileId?: string
 ): Promise<PresignedUrlResponse> {
-  const response = await api.post<PresignedUrlResponse>('/upload/presigned-url', data);
+  const response = await api.post<PresignedUrlResponse>('/upload/presigned-url', {
+    ...data,
+    profile_id: profileId,
+  });
   return response.data;
 }
 
@@ -69,10 +73,14 @@ export async function uploadToS3(
  */
 export async function uploadToLocal(
   file: File,
+  profileId?: string,
   onProgress?: (progress: number) => void
 ): Promise<LocalUploadResponse> {
   const formData = new FormData();
   formData.append('file', file);
+  if (profileId) {
+    formData.append('profile_id', profileId);
+  }
 
   const response = await api.post<LocalUploadResponse>('/upload/local', formData, {
     headers: {
@@ -99,8 +107,10 @@ export async function processDocument(data: ProcessDocumentRequest): Promise<voi
 /**
  * Fetch all documents for the current user
  */
-export async function fetchDocuments(): Promise<Document[]> {
-  const response = await api.get<{ documents: Document[]; total: number }>('/upload/documents');
+export async function fetchDocuments(profileId?: string): Promise<Document[]> {
+  const response = await api.get<{ documents: Document[]; total: number }>('/upload/documents', {
+    params: profileId ? { profile_id: profileId } : undefined,
+  });
   return response.data.documents;
 }
 
@@ -121,6 +131,7 @@ export async function deleteDocument(documentId: string): Promise<void> {
  */
 export async function uploadDocument(
   file: File,
+  profileId?: string,
   onProgress?: (progress: number) => void
 ): Promise<string> {
   // Get upload configuration from backend
@@ -128,10 +139,10 @@ export async function uploadDocument(
 
   if (config.use_presigned_urls) {
     // S3 Pre-signed URL Upload Flow
-    return await uploadDocumentViaS3(file, onProgress);
+    return await uploadDocumentViaS3(file, profileId, onProgress);
   } else {
     // Local Storage Upload Flow
-    return await uploadDocumentViaLocal(file, onProgress);
+    return await uploadDocumentViaLocal(file, profileId, onProgress);
   }
 }
 
@@ -140,6 +151,7 @@ export async function uploadDocument(
  */
 export async function uploadDocumentViaS3(
   file: File,
+  profileId?: string,
   onProgress?: (progress: number) => void
 ): Promise<string> {
   // Extract file extension from filename
@@ -150,7 +162,7 @@ export async function uploadDocumentViaS3(
     filename: file.name,
     file_type: fileExtension,
     file_size: file.size,
-  });
+  }, profileId);
 
   // Step 2: Upload to S3
   await uploadToS3(upload_url, file, onProgress);
@@ -166,9 +178,10 @@ export async function uploadDocumentViaS3(
  */
 export async function uploadDocumentViaLocal(
   file: File,
+  profileId?: string,
   onProgress?: (progress: number) => void
 ): Promise<string> {
   // Upload to local storage (backend handles processing automatically)
-  const response = await uploadToLocal(file, onProgress);
+  const response = await uploadToLocal(file, profileId, onProgress);
   return response.document_id;
 }

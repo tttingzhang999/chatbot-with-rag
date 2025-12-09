@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from src.core.security import get_password_hash, verify_password
 from src.models import User
+from src.services import profile_service
 
 
 def get_user_by_username(db: Session, username: str) -> User | None:
@@ -82,6 +83,10 @@ def create_user(
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    # Create default profile for new user
+    profile_service.create_default_profile(db=db, user_id=user.id)
+
     return user
 
 

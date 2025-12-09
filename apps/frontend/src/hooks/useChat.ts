@@ -4,10 +4,10 @@ import { useChatStore } from '@/stores/chatStore';
 import type { ChatRequest } from '@/types/chat';
 import { toast } from 'sonner';
 
-export const useConversations = () => {
+export const useConversations = (profileId?: string) => {
   return useQuery({
-    queryKey: ['conversations'],
-    queryFn: chatService.getConversations,
+    queryKey: ['conversations', profileId],
+    queryFn: () => chatService.getConversations(profileId),
   });
 };
 

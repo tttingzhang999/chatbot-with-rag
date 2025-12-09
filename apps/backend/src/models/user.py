@@ -43,6 +43,12 @@ class User(Base):
         cascade="all, delete-orphan",
         foreign_keys="Conversation.user_id",
     )
+    prompt_profiles = relationship(
+        "PromptProfile",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        foreign_keys="PromptProfile.user_id",
+    )
 
     # Indexes
     __table_args__ = (

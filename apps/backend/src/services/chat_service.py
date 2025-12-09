@@ -9,10 +9,10 @@ from datetime import datetime
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from src.core.bedrock_client import get_bedrock_client
+from src.core.bedrock_client import BedrockClient, get_bedrock_client
 from src.core.config import settings
 from src.models import Conversation, Message, MessageRole
-from src.prompts.system_prompts import get_system_prompt
+from src.models.prompt_profile import PromptProfile
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +63,7 @@ def generate_conversation_title(first_user_message: str) -> str:
 def get_or_create_conversation(
     db: Session,
     user_id: uuid.UUID,
+    profile_id: uuid.UUID,
     conversation_id: str | None = None,
 ) -> Conversation:
     """
@@ -71,6 +72,7 @@ def get_or_create_conversation(
     Args:
         db: Database session
         user_id: User ID
+        profile_id: Profile ID to associate with conversation
         conversation_id: Optional conversation ID to retrieve
 
     Returns:
@@ -92,6 +94,7 @@ def get_or_create_conversation(
     # Create new conversation
     conv = Conversation(
         user_id=user_id,
+        profile_id=profile_id,
         title=f"Conversation {datetime.now().strftime('%Y-%m-%d %H:%M')}",
     )
     db.add(conv)
@@ -135,17 +138,19 @@ def save_message(
 def generate_response(
     user_message: str,
     conversation_history: list[Message],
+    profile: PromptProfile,
     db: Session | None = None,
     user_id: uuid.UUID | None = None,
 ) -> tuple[str, list[dict] | None]:
     """
-    Generate response to user message using LLM via Bedrock.
+    Generate response to user message using LLM via Bedrock with profile settings.
 
     Args:
         user_message: User's message
         conversation_history: Previous messages in the conversation
-        db: Database session (required if RAG is enabled)
-        user_id: User ID (required if RAG is enabled)
+        profile: Prompt profile containing prompts and settings
+        db: Database session (required for RAG retrieval)
+        user_id: User ID (required for RAG retrieval)
 
     Returns:
         tuple: (Generated response, Retrieved chunks info or None)
@@ -160,69 +165,81 @@ def generate_response(
 
         logger.info(
             f"Generating response with {len(limited_history)} history messages "
-            f"(limit: {settings.MAX_CONVERSATION_HISTORY} turns)"
+            f"(limit: {settings.MAX_CONVERSATION_HISTORY} turns), "
+            f"using profile '{profile.name}'"
         )
 
         # Initialize retrieved chunks
         retrieved_chunks = None
         retrieval_context = ""
 
-        # Perform RAG retrieval if enabled
-        if settings.ENABLE_RAG:
-            if not db or not user_id:
-                logger.warning("RAG enabled but db/user_id not provided, skipping retrieval")
-            else:
-                try:
-                    from src.services.retrieval_service import get_retrieval_service
+        # Perform RAG retrieval (always attempt if db and user_id provided)
+        if db and user_id:
+            try:
+                from src.services.retrieval_service import get_retrieval_service
 
-                    logger.info("Performing hybrid search for RAG context")
+                logger.info("Performing hybrid search for RAG context")
 
-                    # Get retrieval service and perform hybrid search
-                    retrieval_service = get_retrieval_service(db)
-                    search_results = retrieval_service.hybrid_search(
-                        query_text=user_message,
-                        top_k=settings.TOP_K_CHUNKS,
-                        user_id=user_id,
-                    )
+                # Get retrieval service and perform hybrid search with profile settings
+                retrieval_service = get_retrieval_service(db)
+                search_results = retrieval_service.hybrid_search(
+                    query_text=user_message,
+                    top_k=profile.top_k_chunks,
+                    user_id=user_id,
+                    profile_id=profile.id,
+                    semantic_ratio=profile.semantic_search_ratio,
+                    relevance_threshold=profile.relevance_threshold,
+                )
 
-                    if search_results:
-                        # Format retrieved chunks for context
-                        context_parts = []
-                        retrieved_chunks = []
+                if search_results:
+                    # Format retrieved chunks for context
+                    context_parts = []
+                    retrieved_chunks = []
 
-                        for idx, result in enumerate(search_results, 1):
-                            context_parts.append(
-                                f"[Document {idx}: {result['file_name']}]\n{result['content']}\n"
-                            )
-
-                            retrieved_chunks.append(
-                                {
-                                    "chunk_id": result["chunk_id"],
-                                    "document_id": result["document_id"],
-                                    "file_name": result["file_name"],
-                                    "score": result["score"],
-                                    "semantic_score": result.get("semantic_score"),
-                                    "bm25_score": result.get("bm25_score"),
-                                }
-                            )
-
-                        retrieval_context = "\n".join(context_parts)
-                        logger.info(
-                            f"Retrieved {len(search_results)} chunks for RAG context "
-                            f"(total {len(retrieval_context)} characters)"
+                    for idx, result in enumerate(search_results, 1):
+                        context_parts.append(
+                            f"[Document {idx}: {result['file_name']}]\n{result['content']}\n"
                         )
-                    else:
-                        logger.info("No relevant documents found for user query")
 
-                except Exception as e:
-                    logger.error(f"RAG retrieval failed: {e}")
-                    # Continue without RAG context rather than failing completely
+                        retrieved_chunks.append(
+                            {
+                                "chunk_id": result["chunk_id"],
+                                "document_id": result["document_id"],
+                                "file_name": result["file_name"],
+                                "score": result["score"],
+                                "semantic_score": result.get("semantic_score"),
+                                "bm25_score": result.get("bm25_score"),
+                            }
+                        )
 
-        # Get system prompt with or without RAG context
-        system_prompt = get_system_prompt(use_rag=settings.ENABLE_RAG, context=retrieval_context)
+                    retrieval_context = "\n".join(context_parts)
+                    logger.info(
+                        f"Retrieved {len(search_results)} chunks for RAG context "
+                        f"(total {len(retrieval_context)} characters)"
+                    )
+                else:
+                    logger.info("No relevant documents found for user query")
 
-        # Get Bedrock client and invoke LLM with conversation model
-        bedrock_client = get_bedrock_client()
+            except Exception as e:
+                logger.error(f"RAG retrieval failed: {e}")
+                # Continue without RAG context rather than failing completely
+
+        # Auto-select system prompt: use RAG template if we have context, otherwise use base prompt
+        if retrieval_context:
+            system_prompt = profile.rag_system_prompt_template.format(context=retrieval_context)
+            logger.info("Using RAG system prompt template")
+        else:
+            system_prompt = profile.system_prompt
+            logger.info("Using base system prompt (no RAG context)")
+
+        # Create Bedrock client with profile's LLM settings
+        bedrock_client = BedrockClient(
+            model_id=profile.llm_model_id,
+            temperature=profile.llm_temperature,
+            top_p=profile.llm_top_p,
+            max_tokens=profile.llm_max_tokens,
+        )
+
         response = bedrock_client.invoke_llm(
             user_message=user_message,
             conversation_history=limited_history,

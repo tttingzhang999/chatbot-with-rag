@@ -9,6 +9,7 @@ import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ChatPage } from './pages/ChatPage'
 import { DocumentsPage } from './pages/DocumentsPage'
+import { PromptsPage } from './pages/PromptsPage'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { MainLayout } from './layouts/MainLayout'
 
@@ -34,6 +35,7 @@ createRoot(document.getElementById('root')!).render(
               <Route element={<MainLayout />}>
                 <Route path="/" element={<ChatPage />} />
                 <Route path="/documents" element={<DocumentsPage />} />
+                <Route path="/prompts" element={<PromptsPage />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

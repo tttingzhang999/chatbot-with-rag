@@ -39,6 +39,7 @@ class RetrievalService:
         query_embedding: list[float],
         top_k: int,
         user_id: UUID | None = None,
+        profile_id: UUID | None = None,
     ) -> list[dict[str, Any]]:
         """
         Perform semantic search using vector similarity.
@@ -47,6 +48,7 @@ class RetrievalService:
             query_embedding: Query embedding vector (1024 dimensions)
             top_k: Number of results to return
             user_id: Optional user ID to filter documents by owner
+            profile_id: Optional profile ID to filter documents by profile
 
         Returns:
             List of dicts with chunk info and cosine similarity scores
@@ -74,6 +76,10 @@ class RetrievalService:
             # Filter by user if specified
             if user_id:
                 query = query.filter(Document.user_id == user_id)
+
+            # Filter by profile if specified
+            if profile_id:
+                query = query.filter(Document.profile_id == profile_id)
 
             # Order by similarity (highest first) and limit
             results = query.order_by(text("similarity DESC")).limit(top_k).all()
@@ -104,6 +110,7 @@ class RetrievalService:
         query_text: str,
         top_k: int,
         user_id: UUID | None = None,
+        profile_id: UUID | None = None,
     ) -> list[dict[str, Any]]:
         """
         Perform BM25 full-text search using PostgreSQL ts_rank.
@@ -112,6 +119,7 @@ class RetrievalService:
             query_text: Search query text
             top_k: Number of results to return
             user_id: Optional user ID to filter documents by owner
+            profile_id: Optional profile ID to filter documents by profile
 
         Returns:
             List of dicts with chunk info and BM25 scores
@@ -149,6 +157,10 @@ class RetrievalService:
             if user_id:
                 query = query.filter(Document.user_id == user_id)
 
+            # Filter by profile if specified
+            if profile_id:
+                query = query.filter(Document.profile_id == profile_id)
+
             # Order by rank (highest first) and limit
             results = query.order_by(text("rank DESC")).limit(top_k).all()
 
@@ -178,7 +190,9 @@ class RetrievalService:
         query_text: str,
         top_k: int,
         user_id: UUID | None = None,
+        profile_id: UUID | None = None,
         semantic_ratio: float | None = None,
+        relevance_threshold: float | None = None,
     ) -> list[dict[str, Any]]:
         """
         Perform hybrid search combining semantic and BM25 results.
@@ -187,15 +201,18 @@ class RetrievalService:
             query_text: Search query text
             top_k: Total number of results to return
             user_id: Optional user ID to filter documents by owner
+            profile_id: Optional profile ID to filter documents by profile
             semantic_ratio: Weight for semantic search (0-1). If None, uses config default
+            relevance_threshold: Minimum score threshold. If None, uses config default
 
         Returns:
             List of dicts with chunk info and combined scores, sorted by score
         """
         try:
-            # Use config default if not specified
+            # Use config defaults if not specified
             semantic_ratio = semantic_ratio or settings.SEMANTIC_SEARCH_RATIO
             bm25_ratio = 1.0 - semantic_ratio
+            relevance_threshold = relevance_threshold or settings.RELEVANCE_THRESHOLD
 
             logger.info(f"Hybrid search: semantic_ratio={semantic_ratio}, bm25_ratio={bm25_ratio}")
 
@@ -210,7 +227,7 @@ class RetrievalService:
                         "falling back to BM25-only search"
                     )
                     # Fall back to BM25-only search
-                    bm25_results = self.bm25_search(query_text, top_k, user_id)
+                    bm25_results = self.bm25_search(query_text, top_k, user_id, profile_id)
                     return bm25_results
                 else:
                     # Re-raise other errors
@@ -221,8 +238,10 @@ class RetrievalService:
             retrieve_k = top_k * 2
 
             # Perform both searches in parallel (conceptually)
-            semantic_results = self.semantic_search(query_embedding, retrieve_k, user_id)
-            bm25_results = self.bm25_search(query_text, retrieve_k, user_id)
+            semantic_results = self.semantic_search(
+                query_embedding, retrieve_k, user_id, profile_id
+            )
+            bm25_results = self.bm25_search(query_text, retrieve_k, user_id, profile_id)
 
             # Normalize scores for both result sets
             semantic_normalized = self._normalize_scores(semantic_results)
@@ -241,12 +260,12 @@ class RetrievalService:
             top_results = merged_results[:top_k]
 
             # Filter by relevance threshold to avoid returning irrelevant documents
-            final_results = [r for r in top_results if r["score"] >= settings.RELEVANCE_THRESHOLD]
+            final_results = [r for r in top_results if r["score"] >= relevance_threshold]
 
             logger.info(
                 f"Hybrid search returned {len(final_results)} results "
                 f"(from {len(semantic_results)} semantic + {len(bm25_results)} BM25, "
-                f"filtered by threshold {settings.RELEVANCE_THRESHOLD})"
+                f"filtered by threshold {relevance_threshold})"
             )
 
             return final_results

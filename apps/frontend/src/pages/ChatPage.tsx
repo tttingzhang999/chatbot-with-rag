@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useChatStore } from '@/stores/chatStore';
+import { useProfileStore } from '@/stores/profileStore';
 import { useConversations, useSendMessage, useConversationHistory } from '@/hooks/useChat';
 import { MessageList } from '@/components/chat/MessageList';
 import { ChatInput } from '@/components/chat/ChatInput';
@@ -14,8 +15,9 @@ export const ChatPage = () => {
     clearMessages,
     isLoading: chatLoading,
   } = useChatStore();
+  const { currentProfile } = useProfileStore();
 
-  const { data: conversationsData, isLoading: conversationsLoading, refetch: refetchConversations } = useConversations();
+  const { data: conversationsData, isLoading: conversationsLoading, refetch: refetchConversations } = useConversations(currentProfile?.id);
   const { mutate: sendMessage } = useSendMessage();
   const { refetch: refetchHistory } = useConversationHistory(activeConversationId);
 
@@ -37,6 +39,7 @@ export const ChatPage = () => {
     sendMessage({
       message,
       conversation_id: activeConversationId || undefined,
+      profile_id: currentProfile?.id,
     });
   };
 

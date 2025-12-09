@@ -36,6 +36,12 @@ class Conversation(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
+    profile_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("prompt_profiles.id", ondelete="SET NULL"),
+        nullable=True,  # Nullable for backward compatibility
+        index=True,
+    )
     title = Column(String(255), nullable=True)  # Optional conversation title
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(
@@ -48,6 +54,7 @@ class Conversation(Base):
 
     # Relationships
     user = relationship("User", back_populates="conversations")
+    profile = relationship("PromptProfile", back_populates="conversations")
     messages = relationship(
         "Message",
         back_populates="conversation",

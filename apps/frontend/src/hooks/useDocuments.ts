@@ -13,10 +13,10 @@ import { useState } from 'react';
  * - Polls every 5 seconds if any document is pending/processing
  * - Pauses polling when tab is inactive
  */
-export function useDocuments() {
+export function useDocuments(profileId?: string) {
   const query = useQuery<Document[]>({
-    queryKey: ['documents'],
-    queryFn: fetchDocuments,
+    queryKey: ['documents', profileId],
+    queryFn: () => fetchDocuments(profileId),
     // Smart polling: only poll if there are pending/processing documents
     refetchInterval: (data) => {
       if (!data || !Array.isArray(data)) return false;
@@ -42,7 +42,7 @@ export function useDocuments() {
 /**
  * Upload document mutation with progress tracking
  */
-export function useUploadDocument() {
+export function useUploadDocument(profileId?: string) {
   const queryClient = useQueryClient();
   const [uploadProgress, setUploadProgress] = useState<Record<string, UploadProgress>>({});
 
@@ -62,7 +62,7 @@ export function useUploadDocument() {
       }));
 
       try {
-        const documentId = await uploadDocument(file, (progress) => {
+        const documentId = await uploadDocument(file, profileId, (progress) => {
           setUploadProgress((prev) => ({
             ...prev,
             [tempId]: {
@@ -142,8 +142,8 @@ export function useDeleteDocument() {
 /**
  * Upload multiple documents in parallel
  */
-export function useUploadMultipleDocuments() {
-  const { mutateAsync: uploadDocument } = useUploadDocument();
+export function useUploadMultipleDocuments(profileId?: string) {
+  const { mutateAsync: uploadDocument } = useUploadDocument(profileId);
   const [uploadProgress, setUploadProgress] = useState<Record<string, UploadProgress>>({});
 
   const uploadMultiple = async (files: File[]) => {

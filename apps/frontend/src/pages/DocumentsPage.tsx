@@ -3,14 +3,16 @@ import { Upload, RefreshCw } from 'lucide-react';
 import { UploadZone } from '@/components/documents/UploadZone';
 import { DocumentList } from '@/components/documents/DocumentList';
 import { useUploadMultipleDocuments, useDocuments } from '@/hooks/useDocuments';
+import { useProfileStore } from '@/stores/profileStore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 
 export function DocumentsPage() {
-  const { uploadMultiple } = useUploadMultipleDocuments();
-  const { refetch, isRefetching } = useDocuments();
+  const { currentProfile } = useProfileStore();
+  const { uploadMultiple } = useUploadMultipleDocuments(currentProfile?.id);
+  const { refetch, isRefetching } = useDocuments(currentProfile?.id);
   const [isUploading, setIsUploading] = useState(false);
 
   const handleFilesSelected = async (files: File[]) => {
@@ -71,7 +73,7 @@ export function DocumentsPage() {
           </CardHeader>
           <CardContent className="flex-1 min-h-0 p-0">
             <ScrollArea className="h-full px-6">
-              <DocumentList />
+              <DocumentList profileId={currentProfile?.id} />
             </ScrollArea>
           </CardContent>
         </Card>

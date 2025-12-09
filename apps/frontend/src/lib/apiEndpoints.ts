@@ -13,4 +13,10 @@ export const API_ENDPOINTS = {
   UPLOAD_DOCUMENTS: '/upload/documents',
   UPLOAD_PROCESS_DOCUMENT: '/upload/process-document',
   UPLOAD_DOCUMENT_BY_ID: (id: string) => `/upload/documents/${id}`,
+
+  // Profiles
+  PROFILES: '/profiles',
+  PROFILES_DEFAULT: '/profiles/default',
+  PROFILE_BY_ID: (id: string) => `/profiles/${id}`,
+  PROFILE_SET_DEFAULT: (id: string) => `/profiles/${id}/set-default`,
 } as const;
