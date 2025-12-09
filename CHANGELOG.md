@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] 2025-12-09 - Storage Type Management & S3 Direct Upload
+
+### Added
+
+- **Storage type management:**
+  - Added `storage_type` field to `documents` table (Alembic migration) to track whether documents are stored locally (`local`) or in cloud storage (`cloud`/S3).
+  - Document model updated to support storage type tracking for flexible deployment scenarios.
+- **S3 service for direct uploads:**
+  - New `S3Service` class (`src/services/s3_service.py`) for generating pre-signed URLs for direct client-to-S3 uploads.
+  - `generate_presigned_upload_url()` method creates time-limited PUT URLs (default 5 minutes) with proper content-type and metadata.
+  - `delete_file()` method for removing files from S3 using s3:// URI format.
+  - Eliminates need for files to transit through backend Lambda, improving upload performance and reducing costs.
+  - Pre-signed URLs use PUT method for simpler client implementation.
+  - Content-type detection for PDF, DOCX, TXT, and DOC file types.
+  - Metadata tags include document-id and file-type for S3 object organization.
+- **Chunk browsing API and UI:**
+  - Added read-only endpoint `GET /embeds/documents/{document_id}/chunks` for browsing document chunks with metadata.
+  - New `ChunkAccordion` frontend component for displaying document chunks with expandable details.
+  - Shows chunk index, character count, embedding dimension, and full content preview.
+  - Integrated into document list view for easy chunk inspection.
+  - New `embedService` for API communication with embed endpoint.
+  - Added `Accordion` UI component for collapsible content display.
+  - Endpoint includes ownership verification and proper error handling.
+
+### Changed
+
+- **Document service:**
+  - Updated to handle storage type when processing documents.
+  - Improved integration with S3 service for cloud-stored documents.
+- **Upload route:**
+  - Enhanced to support storage type assignment during document creation.
+- **Database migration:**
+  - Simplified `storage_type` migration downgrade logic (removed conditional column existence check).
+
 ## [1.2.0] 2025-12-09 - Prompt Profiles & Profile-Aware Retrieval
 
 ### Added

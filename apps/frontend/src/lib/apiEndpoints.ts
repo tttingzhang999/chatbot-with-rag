@@ -16,10 +16,6 @@ export const API_ENDPOINTS = {
 
   // Embed
   EMBED_DOCUMENT_CHUNKS: (documentId: string) => `/embeds/documents/${documentId}/chunks`,
-  EMBED_CHUNK_BY_ID: (chunkId: string) => `/embeds/chunks/${chunkId}`,
-  EMBED_RE_EMBED_CHUNK: (chunkId: string) => `/embeds/chunks/${chunkId}/re-embed`,
-  EMBED_RE_EMBED_ALL: (documentId: string) => `/embeds/documents/${documentId}/re-embed-all`,
-  EMBED_CONFIG: '/embeds/config',
 
   // Profiles
   PROFILES: '/profiles',
